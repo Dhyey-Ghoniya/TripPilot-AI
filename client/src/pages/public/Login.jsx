@@ -7,6 +7,7 @@ import Alert from '../../components/common/Alert';
 import { Mail, Lock, LogIn, Plane, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { getPendingTripSession } from '../../utils/pendingTripStorage';
 
 const Login = () => {
   const { login } = useAuth();
@@ -36,7 +37,17 @@ const Login = () => {
       const result = await login(email, password);
       if (result.success) {
         showToast(`Welcome back, ${result.user.firstName}! 👋`, 'success');
-        navigate(from, { replace: true });
+        
+        const pending = getPendingTripSession();
+        if (pending?.activeTrip?._id) {
+          showToast('Restored your pending trip context!', 'info');
+          navigate(`/trips/${pending.activeTrip._id}`, { replace: true });
+        } else if (pending?.chatLog?.length > 0) {
+          showToast('Restored your AI conversation context!', 'info');
+          navigate('/plan-trip', { replace: true });
+        } else {
+          navigate(from, { replace: true });
+        }
       } else {
         setErrorMessage(result.message || 'Invalid email or password.');
       }
