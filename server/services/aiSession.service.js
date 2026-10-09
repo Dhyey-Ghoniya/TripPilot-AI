@@ -1,6 +1,6 @@
 const AiSession = require('../models/AiSession');
 const travelOrchestrator = require('./travelOrchestrator.service');
-const { v4: uuidv4 } = require('crypto');
+const aiExtractor = require('./aiExtractor.service');
 
 class AiSessionService {
   /**
@@ -21,12 +21,14 @@ class AiSessionService {
         messages: [
           {
             sender: 'assistant',
-            content: 'Hello! I am your TripPilot AI Travel Copilot. Where would you like to travel, and for how many days?',
+            content: 'Hi! Where would you like to travel?',
             timestamp: new Date(),
           },
         ],
         extractedParams: {},
-        missingFields: ['destination', 'duration'],
+        draftRequirements: {},
+        lastAskedField: 'destination',
+        missingFields: ['destination', 'origin', 'duration', 'dates', 'budget'],
         status: 'active',
       });
       await session.save();
@@ -37,7 +39,7 @@ class AiSessionService {
 
   /**
    * Send a user message to an active AI planning session.
-   * Evaluates prompt, updates conversation, and generates trip if complete.
+   * Evaluates prompt, updates conversational draft requirements, and generates trip when ready.
    */
   async handleUserMessage(sessionId, messageText, userId = null) {
     let session = await AiSession.findOne({ sessionId });
@@ -45,47 +47,161 @@ class AiSessionService {
       session = await this.createOrGetSession(userId, sessionId);
     }
 
-    // Add user message to session transcript
+    // Append user message to transcript
     session.messages.push({
       sender: 'user',
       content: messageText,
       timestamp: new Date(),
     });
 
-    // Determine effective active trip ID
     const effectiveTripId = session.tripId || (sessionId && String(sessionId).length === 24 ? sessionId : null);
 
-    // Run TravelOrchestrator with accumulated session params & active trip ID
-    const orchestratorResult = await travelOrchestrator.orchestrateTripPlanning({
-      prompt: messageText,
-      userId: userId || session.userId,
-      tripId: effectiveTripId,
-      sessionParams: session.extractedParams || {},
-      forceSynthesis: false,
-    });
+    // Merge previous session params & draft requirements
+    const accumulatedParams = {
+      ...(session.draftRequirements || {}),
+      ...(session.extractedParams || {}),
+    };
 
-    // Update session state
-    session.extractedParams = orchestratorResult.extractedParams;
-    session.missingFields = orchestratorResult.missingFields || [];
+    // Extract parameters & intent using Module 2 context awareness
+    const extraction = aiExtractor.extractParameters(
+      messageText,
+      accumulatedParams,
+      session.lastAskedField
+    );
 
-    if (orchestratorResult.status === 'completed' && orchestratorResult.trip) {
-      session.status = 'completed';
-      session.tripId = orchestratorResult.trip._id;
+    // ─────────────────────────────────────────────────────────────────
+    // 1. HANDLE START OVER
+    // ─────────────────────────────────────────────────────────────────
+    if (extraction.intent === 'START_OVER') {
+      session.draftRequirements = {};
+      session.extractedParams = {};
+      session.lastAskedField = 'destination';
+      session.missingFields = ['destination', 'origin', 'duration', 'dates', 'budget'];
+      session.status = 'active';
+      session.tripId = null;
+
+      session.messages.push({
+        sender: 'assistant',
+        content: extraction.copilotMessage,
+        timestamp: new Date(),
+      });
+      await session.save();
+
+      return {
+        session,
+        orchestratorResult: {
+          status: 'reset',
+          isComplete: false,
+          action: 'START_OVER',
+          copilotMessage: extraction.copilotMessage,
+          draftRequirements: {},
+        },
+      };
     }
 
-    // Add AI copilot response message
-    session.messages.push({
-      sender: 'assistant',
-      content: orchestratorResult.copilotMessage,
-      timestamp: new Date(),
-      metadata: {
-        destinationContext: orchestratorResult.destinationContext,
-        trip: orchestratorResult.trip,
-        itinerary: orchestratorResult.itinerary,
-        structuredData: orchestratorResult.structuredData,
-        isComplete: orchestratorResult.isComplete,
-      },
-    });
+    // ─────────────────────────────────────────────────────────────────
+    // 2. HANDLE EXISTING CREATED TRIP COMMANDS (Module 1 features)
+    // ─────────────────────────────────────────────────────────────────
+    const lowerMsg = (messageText || '').toLowerCase();
+    const isExistingTripCmd =
+      effectiveTripId &&
+      (lowerMsg.includes('cheaper') ||
+        lowerMsg.includes('add ') ||
+        lowerMsg.includes('remove') ||
+        lowerMsg.includes('hotel') ||
+        lowerMsg.includes('restaurant') ||
+        lowerMsg.includes('flight') ||
+        lowerMsg.includes('checklist') ||
+        lowerMsg.includes('visa') ||
+        lowerMsg.includes('pack') ||
+        lowerMsg.includes('road trip'));
+
+    if (isExistingTripCmd) {
+      const orchestratorResult = await travelOrchestrator.orchestrateTripPlanning({
+        prompt: messageText,
+        userId: userId || session.userId,
+        tripId: effectiveTripId,
+        sessionParams: accumulatedParams,
+        forceSynthesis: false,
+      });
+
+      session.messages.push({
+        sender: 'assistant',
+        content: orchestratorResult.copilotMessage,
+        timestamp: new Date(),
+        metadata: {
+          trip: orchestratorResult.trip,
+          itinerary: orchestratorResult.itinerary,
+          structuredData: orchestratorResult.structuredData,
+          isComplete: orchestratorResult.isComplete,
+        },
+      });
+      await session.save();
+
+      return { session, orchestratorResult };
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // 3. MULTI-TURN REQUIREMENT COLLECTION & TRIP GENERATION
+    // ─────────────────────────────────────────────────────────────────
+    // Update stored draft requirements
+    session.draftRequirements = extraction.params;
+    session.extractedParams = extraction.params;
+    session.missingFields = extraction.missingFields;
+    session.lastAskedField = extraction.lastAskedField;
+
+    let orchestratorResult = null;
+
+    if (extraction.isReadyToPlan) {
+      // Create trip blueprint when requirements are sufficient or user requested proceed
+      orchestratorResult = await travelOrchestrator.orchestrateTripPlanning({
+        prompt: messageText,
+        userId: userId || session.userId,
+        tripId: null,
+        sessionParams: extraction.params,
+        forceSynthesis: true,
+      });
+
+      if (orchestratorResult.status === 'completed' && orchestratorResult.trip) {
+        session.status = 'completed';
+        session.tripId = orchestratorResult.trip._id;
+      }
+
+      session.messages.push({
+        sender: 'assistant',
+        content: orchestratorResult.copilotMessage,
+        timestamp: new Date(),
+        metadata: {
+          destinationContext: orchestratorResult.destinationContext,
+          trip: orchestratorResult.trip,
+          itinerary: orchestratorResult.itinerary,
+          structuredData: orchestratorResult.structuredData,
+          isComplete: orchestratorResult.isComplete,
+        },
+      });
+    } else {
+      // Ask next conversational follow-up question
+      orchestratorResult = {
+        status: 'collecting_requirements',
+        isComplete: false,
+        action: 'ASK_FOLLOW_UP',
+        copilotMessage: extraction.copilotMessage,
+        draftRequirements: extraction.params,
+        missingFields: extraction.missingFields,
+        lastAskedField: extraction.lastAskedField,
+      };
+
+      session.messages.push({
+        sender: 'assistant',
+        content: extraction.copilotMessage,
+        timestamp: new Date(),
+        metadata: {
+          draftRequirements: extraction.params,
+          missingFields: extraction.missingFields,
+          isComplete: false,
+        },
+      });
+    }
 
     await session.save();
 

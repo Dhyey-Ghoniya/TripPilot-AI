@@ -28,6 +28,14 @@ const AiSessionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: {},
     },
+    draftRequirements: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+    lastAskedField: {
+      type: String,
+      default: null,
+    },
     missingFields: [{ type: String }],
     status: {
       type: String,
