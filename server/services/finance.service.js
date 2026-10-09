@@ -245,8 +245,8 @@ class FinanceService {
     const lowerCmd = command.toLowerCase();
     const itinerary = trip.itineraryId;
 
-    // Command: "Keep the trip under ₹X" or "Budget under X"
-    if (lowerCmd.match(/under\s*₹?\s*[\d,]+|budget.*[\d,]+|limit.*[\d,]+/)) {
+    // Command: "Keep the trip under ₹X" or "below ₹X" or "Budget under X"
+    if (lowerCmd.match(/under\s*₹?\s*[\d,]+|below\s*₹?\s*[\d,]+|budget.*[\d,]+|limit.*[\d,]+/)) {
       return this._handleBudgetLimit(trip, itinerary, command);
     }
 
