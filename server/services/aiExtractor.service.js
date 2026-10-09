@@ -209,18 +209,18 @@ class AiExtractorService {
     else if (params.travelersCount === 2) params.travelersType = 'couple';
     else if (params.travelersCount > 2) params.travelersType = 'group';
 
-    // Origin (e.g. "from Ahmedabad", "from Mumbai")
-    const originMatch = text.match(/from\s+([A-Za-z\s]+?)(?=\s+to|\s+for|\s+under|\s+with|\s+in|\.|$)/i);
+    // Origin (e.g. "from Ahmedabad", "from Mumbai", "from Ahmedabad, India")
+    const originMatch = text.match(/from\s+([A-Za-z\s,\-\']+?)(?=\s+to|\s+for|\s+under|\s+with|\s+in|\.|$)/i);
     if (originMatch) {
-      params.origin = originMatch[1].trim();
+      params.origin = originMatch[1].replace(/,$/g, '').trim();
     }
 
     // Destination Extraction
     let extractedDest = '';
-    const roadTripMatch = text.match(/road\s+trip\s+from\s+[A-Za-z\s]+\s+to\s+([A-Za-z\s]+?)(?=\s+for|\s+under|\s+with|\.|$)/i);
-    const planTripToMatch = text.match(/(?:plan|create|build|make)\s+(?:a\s+)?(?:\d+-day\s+)?(?:trip|honeymoon|vacation|getaway|itinerary)?\s+(?:to|in)\s+([A-Za-z\s]+?)(?=\s+from|\s+for|\s+under|\s+with|\.|$)/i);
-    const visitMatch = text.match(/(?:want\s+to\s+visit|want\s+to\s+explore|visit|explore)\s+([A-Za-z\s]+?)(?=\s+from|\s+for|\s+under|\s+in|\.|$)/i);
-    const genericToMatch = text.match(/\bto\s+([A-Za-z\s]+?)(?=\s+from|\s+for|\s+under|\s+with|\s+in|\.|$)/i);
+    const roadTripMatch = text.match(/road\s+trip\s+from\s+[A-Za-z\s,\-\']+\s+to\s+([A-Za-z\s,\-\']+?)(?=\s+for|\s+under|\s+with|\.|$)/i);
+    const planTripToMatch = text.match(/(?:plan|create|build|make)\s+(?:a\s+)?(?:\d+-day\s+)?(?:trip|honeymoon|vacation|getaway|itinerary)?\s+(?:to|in)\s+([A-Za-z\s,\-\']+?)(?=\s+from|\s+for|\s+under|\s+with|\.|$)/i);
+    const visitMatch = text.match(/(?:want\s+to\s+visit|want\s+to\s+explore|visit|explore)\s+([A-Za-z\s,\-\']+?)(?=\s+from|\s+for|\s+under|\s+in|\.|$)/i);
+    const genericToMatch = text.match(/\bto\s+([A-Za-z\s,\-\']+?)(?=\s+from|\s+for|\s+under|\s+with|\s+in|\.|$)/i);
 
     if (roadTripMatch) extractedDest = roadTripMatch[1];
     else if (planTripToMatch) extractedDest = planTripToMatch[1];
@@ -230,6 +230,7 @@ class AiExtractorService {
     if (extractedDest) {
       extractedDest = extractedDest
         .replace(/\b(for|from|under|with|days|day|trip|in|a|the|people|person|pax|lakh|budget)\b/gi, '')
+        .replace(/,$/g, '')
         .trim();
       if (extractedDest.length >= 2) {
         params.destination = extractedDest.charAt(0).toUpperCase() + extractedDest.slice(1);

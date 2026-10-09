@@ -686,6 +686,22 @@ class TravelOrchestratorService {
     const destRes = await aiTools.searchDestination(params.destination);
     const destinationContext = destRes.data;
 
+    // Handle Ambiguous Destination (e.g. Springfield, Victoria)
+    if (destinationContext.isAmbiguous) {
+      return {
+        status: 'need_clarification',
+        isComplete: false,
+        isAmbiguous: true,
+        action: 'AMBIGUOUS_DESTINATION',
+        source: 'OPEN_METEO_GEOCODING_AMBIGUOUS',
+        copilotMessage: destinationContext.copilotMessage,
+        candidates: destinationContext.candidates,
+        extractedParams: params,
+        trip: null,
+        itinerary: null,
+      };
+    }
+
     // Handle Special / Impossible Destinations (e.g. Moon, Mars)
     if (destinationContext.isSpecialDestination) {
       return {

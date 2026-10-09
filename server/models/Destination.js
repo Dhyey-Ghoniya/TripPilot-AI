@@ -64,7 +64,7 @@ const DestinationSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     slug: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
     country: { type: String, required: true, default: 'India', trim: true },
-    state: { type: String, required: true, trim: true },
+    state: { type: String, required: false, default: '', trim: true },
     city: { type: String, required: true, trim: true },
     description: { type: String, required: true },
     shortDescription: { type: String, required: true },
