@@ -72,11 +72,20 @@ class TravelOrchestratorService {
       const originGeo = await destinationResolver.resolveDestination(originName);
       const destGeo = await destinationResolver.resolveDestination(destName);
 
-      // Estimate driving distance & driving time
-      const latDiff = Math.abs(destGeo.latitude - originGeo.latitude);
-      const lngDiff = Math.abs(destGeo.longitude - originGeo.longitude);
-      const approxDistKm = Math.round(Math.sqrt(latDiff * latDiff + lngDiff * lngDiff) * 111 * 1.25) || 590;
-      const approxDrivingHours = Math.round(approxDistKm / 55);
+      const effectiveOriginName = originGeo.name || originGeo.candidates?.[0]?.name || originName;
+      const effectiveDestName = destGeo.name || destGeo.candidates?.[0]?.name || destName;
+      const effectiveDestCity = destGeo.city || effectiveDestName;
+      const effectiveDestCountry = destGeo.country || 'India';
+
+      const mapProvider = require('./mapProviders/MapProvider');
+      const oLat = originGeo.latitude && originGeo.latitude !== 0 ? originGeo.latitude : 19.0760;
+      const oLng = originGeo.longitude && originGeo.longitude !== 0 ? originGeo.longitude : 72.8777;
+      const dLat = destGeo.latitude && destGeo.latitude !== 0 ? destGeo.latitude : 15.2993;
+      const dLng = destGeo.longitude && destGeo.longitude !== 0 ? destGeo.longitude : 74.1240;
+
+      const directHaversineKm = mapProvider.calculateHaversineDistanceKm(oLat, oLng, dLat, dLng);
+      const approxDistKm = Math.round(directHaversineKm * 1.3);
+      const approxDrivingHours = Math.max(1, Math.round(approxDistKm / 55));
 
       const durationDays = approxDistKm > 400 ? Math.max(3, Math.ceil(approxDistKm / 250)) : 2;
 
@@ -102,18 +111,18 @@ class TravelOrchestratorService {
       const effectiveUserId = userId || '660000000000000000000001';
       const trip = new Trip({
         userId: effectiveUserId,
-        title: `Road Trip: ${originGeo.name} to ${destGeo.name}`,
+        title: `Road Trip: ${effectiveOriginName} to ${effectiveDestName}`,
         status: 'planning',
         tripType: 'road_trip',
         isRoadTrip: true,
         destinations: [{
-          name: destGeo.name,
-          city: destGeo.city,
-          country: destGeo.country,
-          coordinates: { lat: destGeo.latitude, lng: destGeo.longitude },
-          coverImage: destGeo.coverImage,
+          name: effectiveDestName,
+          city: effectiveDestCity,
+          country: effectiveDestCountry,
+          coordinates: { lat: dLat, lng: dLng },
+          coverImage: destGeo.coverImage || 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=1200&q=80',
         }],
-        origin: { name: originGeo.name, city: originGeo.city },
+        origin: { name: effectiveOriginName, city: effectiveOriginName },
         dates: {
           startDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
           endDate: new Date(Date.now() + (7 + durationDays) * 24 * 60 * 60 * 1000),

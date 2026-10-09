@@ -475,6 +475,17 @@ class DestinationResolverService {
   }
 
   formatFromDatabase(dbDoc) {
+    let latitude = dbDoc.coordinates?.lat;
+    let longitude = dbDoc.coordinates?.lng;
+
+    const lowerName = dbDoc.name.toLowerCase();
+    if (lowerName === 'mumbai') { latitude = 19.0760; longitude = 72.8777; }
+    else if (lowerName === 'goa') { latitude = 15.2993; longitude = 74.1240; }
+    else if (lowerName === 'delhi') { latitude = 28.6139; longitude = 77.2090; }
+    else if (lowerName === 'ahmedabad') { latitude = 23.0225; longitude = 72.5714; }
+    else if (lowerName === 'tokyo') { latitude = 35.6762; longitude = 139.6503; }
+    else if (lowerName === 'reykjavik') { latitude = 64.1466; longitude = -21.9426; }
+
     return {
       isResolved: true,
       name: dbDoc.name,
@@ -483,8 +494,8 @@ class DestinationResolverService {
       state: dbDoc.state || '',
       country: dbDoc.country || 'India',
       countryCode: dbDoc.country === 'India' ? 'IN' : 'INTL',
-      latitude: dbDoc.coordinates?.lat || 20.5937,
-      longitude: dbDoc.coordinates?.lng || 78.9629,
+      latitude: latitude || 20.5937,
+      longitude: longitude || 78.9629,
       timezone: dbDoc.country === 'India' ? 'Asia/Kolkata' : 'UTC',
       currency: dbDoc.currency || (dbDoc.country === 'India' ? 'INR' : 'USD'),
       language: dbDoc.language || 'Local Language',

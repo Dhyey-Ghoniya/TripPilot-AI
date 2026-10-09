@@ -136,6 +136,8 @@ class AiToolsService {
   async createItinerary(tripId, destinationContext, durationDays = 5) {
     const destName = destinationContext.name;
     const country = destinationContext.country || '';
+    const destLat = destinationContext.latitude || 20.5937;
+    const destLng = destinationContext.longitude || 78.9629;
     const popularAreas = destinationContext.popularAreas || [`Central ${destName}`, `Old Town ${destName}`];
     const attractions = destinationContext.attractions || [`${destName} Historic Landmark`, `${destName} Viewpoint`];
     const activitiesList = destinationContext.activities || [`Sightseeing Tour`, `Local Dining`];
@@ -156,46 +158,66 @@ class AiToolsService {
       else if (d % 2 === 0) dayTheme = `Cultural Immersion & Local Flavors in ${areaName}`;
       else dayTheme = `Iconic Landmarks & Sunset Experience in ${areaName}`;
 
-      // 4 Time slots per day with destination-tailored activities
+      // 4 Time slots per day with coordinates & transport telemetry
       const timeSlots = [
         {
           time: '09:00 AM',
-          slot: 'morning',
+          timeSlot: 'morning',
           activity: `Explore ${attractions[(d - 1) % attractions.length]} in ${areaName}`,
           location: areaName,
+          coordinates: {
+            lat: Math.round((destLat + (d * 0.008) - 0.004) * 10000) / 10000,
+            lng: Math.round((destLng + (d * 0.006) - 0.003) * 10000) / 10000,
+          },
           durationMinutes: 120,
           estimatedCost: isDomestic ? 500 : 1500,
           transportModeToNext: 'Walking',
+          transportDurationMinutes: 15,
           notes: `Morning highlight in central ${areaName}`,
         },
         {
           time: '01:30 PM',
-          slot: 'afternoon',
+          timeSlot: 'afternoon',
           activity: `Authentic Local Dining & Street Food Walk in ${areaName}`,
           location: areaName,
+          coordinates: {
+            lat: Math.round((destLat + (d * 0.005) + 0.002) * 10000) / 10000,
+            lng: Math.round((destLng - (d * 0.004) + 0.005) * 10000) / 10000,
+          },
           durationMinutes: 90,
           estimatedCost: isDomestic ? 800 : 2200,
           transportModeToNext: isDomestic ? 'Auto / Cab' : 'Metro / Bus',
+          transportDurationMinutes: 20,
           notes: `Try signature regional dishes of ${destName}`,
         },
         {
           time: '05:00 PM',
-          slot: 'evening',
+          timeSlot: 'evening',
           activity: activitiesList[(d - 1) % activitiesList.length] || `Sunset Experience at ${destName} Viewpoint`,
           location: areaName,
+          coordinates: {
+            lat: Math.round((destLat - (d * 0.006) + 0.003) * 10000) / 10000,
+            lng: Math.round((destLng + (d * 0.007) - 0.002) * 10000) / 10000,
+          },
           durationMinutes: 150,
           estimatedCost: isDomestic ? 1200 : 3500,
           transportModeToNext: 'Taxi',
+          transportDurationMinutes: 25,
           notes: `Prime golden hour viewing spot in ${destName}`,
         },
         {
           time: '08:30 PM',
-          slot: 'night',
+          timeSlot: 'night',
           activity: `Evening Promenade & Nightlife at ${popularAreas[(d % popularAreas.length)]}`,
           location: popularAreas[(d % popularAreas.length)],
+          coordinates: {
+            lat: Math.round((destLat + (d * 0.003) - 0.005) * 10000) / 10000,
+            lng: Math.round((destLng - (d * 0.005) + 0.004) * 10000) / 10000,
+          },
           durationMinutes: 120,
           estimatedCost: isDomestic ? 1000 : 2800,
           transportModeToNext: 'Taxi',
+          transportDurationMinutes: 15,
           notes: `Vibrant evening atmosphere in ${destName}`,
         },
       ];
@@ -208,6 +230,12 @@ class AiToolsService {
         theme: dayTheme,
         summary: `Full day itinerary exploring ${areaName} and iconic highlights in ${destName}.`,
         activities: timeSlots,
+        meals: {
+          breakfast: `Artisanal Café & Breakfast Bistro in ${areaName}`,
+          lunch: `Signature Regional Lunch at ${areaName} Food Promenade`,
+          dinner: `Rooftop / Local Fine Dining Restaurant in ${destName}`,
+        },
+        dayNotes: `Hotel check-in / stay in ${areaName}. Intercity and local transit active.`,
         estimatedDayCost: dayCost,
       });
     }
