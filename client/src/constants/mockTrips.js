@@ -1,0 +1,46 @@
+export const mockUpcomingTrip = {
+  id: 'trip-101',
+  title: 'Goa Coastal Escape',
+  destination: 'Goa, India',
+  startDate: '15 Sep 2026',
+  endDate: '20 Sep 2026',
+  travelers: 4,
+  budget: '₹35,000',
+  status: 'upcoming',
+  imageUrl: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=800&q=80',
+  progress: 75,
+  daysCount: 5,
+};
+
+export const mockRecentTrips = [
+  {
+    id: 'trip-102',
+    title: 'Manali Snow Adventure',
+    destination: 'Manali, Himachal Pradesh',
+    dates: '10 Jan – 16 Jan 2026',
+    travelers: 2,
+    spent: '₹28,400',
+    status: 'completed',
+    imageUrl: 'https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    id: 'trip-103',
+    title: 'Jaipur Heritage & Forts Tour',
+    destination: 'Jaipur, Rajasthan',
+    dates: '12 Nov – 15 Nov 2025',
+    travelers: 3,
+    spent: '₹19,800',
+    status: 'completed',
+    imageUrl: 'https://images.unsplash.com/photo-1477587458883-47145ed94245?auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    id: 'trip-104',
+    title: 'Kerala Backwater Serenity',
+    destination: 'Alleppey & Munnar, Kerala',
+    dates: '01 Oct – 07 Oct 2025',
+    travelers: 2,
+    spent: '₹32,100',
+    status: 'completed',
+    imageUrl: 'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&w=800&q=80',
+  },
+];
