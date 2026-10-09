@@ -250,16 +250,16 @@ class HotelService {
     const hotelFit = this.getHotelFit(hotelData, trip, nights);
     if (trip.transport) {
       trip.transport.estimatedCost = (trip.transport.estimatedCost || 0) + hotelFit.estimatedDailyTransportCost * nights;
-      trip.transport.notes = `Stay at ${trip.hotel.name} (${hotelFit.estimatedTransportImpact})`;
+      trip.transport.notes = `Stay at ${trip.hotels[0].name} (${hotelFit.estimatedTransportImpact})`;
     }
 
     await trip.save();
 
     return {
       success: true,
-      message: `Hotel ${trip.hotel.name} attached to trip "${trip.title}"! Budget & map updated.`,
+      message: `Hotel ${trip.hotels[0].name} attached to trip "${trip.title}"! Budget & map updated.`,
       trip,
-      attachedHotel: trip.hotel,
+      attachedHotel: trip.hotels[0],
       hotelFit,
     };
   }
@@ -276,19 +276,45 @@ class HotelService {
 
     const destination = trip?.destination?.name || 'Dubai';
 
-    // 1. "Find a hotel near my Day 2 activities"
-    if (prompt.includes('day 2') || prompt.includes('near my day 2')) {
+    // 1. "Find a hotel near my Day N activities" (Dynamic for any day)
+    const dayMatch = prompt.match(/day\s*(\d+)/i);
+    if (dayMatch || prompt.includes('near my activities')) {
+      const targetDay = dayMatch ? Number(dayMatch[1]) : 3;
       const searchRes = await this.searchHotels({ destination, tripId }, userId);
-      const sortedByDay2 = [...searchRes.results].sort(
-        (a, b) => (a.hotelFit?.distanceToDay2Km || 99) - (b.hotelFit?.distanceToDay2Km || 99)
-      );
-      const bestNearDay2 = sortedByDay2[0];
+
+      let targetLat = trip?.destinations?.[0]?.coordinates?.lat || 25.2048;
+      let targetLng = trip?.destinations?.[0]?.coordinates?.lng || 55.2708;
+      let dayTitle = `Day ${targetDay} activities`;
+
+      if (trip?.itineraryId?.days) {
+        const dayObj = trip.itineraryId.days.find((d) => d.dayNumber === targetDay);
+        if (dayObj && dayObj.activities?.length > 0) {
+          const validCoords = dayObj.activities.filter((a) => a.coordinates?.lat && a.coordinates?.lng);
+          if (validCoords.length > 0) {
+            targetLat = validCoords.reduce((sum, a) => sum + a.coordinates.lat, 0) / validCoords.length;
+            targetLng = validCoords.reduce((sum, a) => sum + a.coordinates.lng, 0) / validCoords.length;
+            dayTitle = dayObj.title || `Day ${targetDay} activities`;
+          }
+        }
+      }
+
+      const scoredHotels = searchRes.results.map((h) => {
+        const hLat = h.coordinates?.lat || targetLat;
+        const hLng = h.coordinates?.lng || targetLng;
+        const distKm = this.calculateDistanceKm(hLat, hLng, targetLat, targetLng);
+        return {
+          ...h,
+          distanceToTargetDayKm: distKm,
+        };
+      }).sort((a, b) => a.distanceToTargetDayKm - b.distanceToTargetDayKm);
+
+      const bestHotel = scoredHotels[0];
 
       return {
-        action: 'near_day2',
-        message: `Found ${bestNearDay2.name} located only ${bestNearDay2.hotelFit.distanceToDay2Km} km from your Day 2 activities!`,
-        hotel: bestNearDay2,
-        options: sortedByDay2.slice(0, 3),
+        action: `near_day${targetDay}`,
+        message: `Found ${bestHotel.name} located only ${bestHotel.distanceToTargetDayKm} km from your ${dayTitle}!`,
+        hotel: bestHotel,
+        options: scoredHotels.slice(0, 3),
       };
     }
 
