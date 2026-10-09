@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import {
-  MapPin,
   Navigation,
   Building2,
   Plane,
@@ -12,13 +13,20 @@ import {
   Train,
   Bike,
   Utensils,
-  Compass,
-  AlertTriangle,
+  MapPin,
   Zap,
 } from 'lucide-react';
 import Card from '../common/Card';
 import Badge from '../ui/Badge';
 import mapService from '../../services/mapService';
+
+// Fix Leaflet default icon path assets
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
 
 const TRANSPORT_MODES = [
   { mode: 'Walking', icon: Footprints, speed: '4.5 km/h' },
@@ -31,12 +39,15 @@ const TRANSPORT_MODES = [
 ];
 
 const MapView = ({ trip, itinerary, selectedDay = 1 }) => {
-  const destName = trip?.destination?.name || 'Destination';
-  const centerLat = trip?.destination?.coordinates?.lat || 25.2048;
-  const centerLng = trip?.destination?.coordinates?.lng || 55.2708;
+  const mapContainerRef = useRef(null);
+  const leafletMapInstanceRef = useRef(null);
+
+  const destName = trip?.destinations?.[0]?.name || trip?.destination?.name || 'Destination';
+  const originName = trip?.origin?.name || trip?.origin?.city || 'Origin';
+  const centerLat = trip?.destinations?.[0]?.coordinates?.lat || trip?.destination?.coordinates?.lat || 20.5937;
+  const centerLng = trip?.destinations?.[0]?.coordinates?.lng || trip?.destination?.coordinates?.lng || 78.9629;
 
   const [activeMode, setActiveMode] = useState(trip?.transport?.mode || 'Taxi');
-  const [activeLayer, setActiveLayer] = useState('all'); // 'all', 'hotel', 'activities', 'airport'
   const [loading, setLoading] = useState(false);
   const [telemetry, setTelemetry] = useState(null);
   const [optimizationMsg, setOptimizationMsg] = useState('');
@@ -44,6 +55,7 @@ const MapView = ({ trip, itinerary, selectedDay = 1 }) => {
   const currentDayObj = itinerary?.days?.find((d) => d.dayNumber === selectedDay) || itinerary?.days?.[0];
   const activities = currentDayObj?.activities || [];
 
+  // Fetch telemetry
   const fetchWorkspaceMap = async () => {
     if (!trip?._id) return;
     setLoading(true);
@@ -62,6 +74,94 @@ const MapView = ({ trip, itinerary, selectedDay = 1 }) => {
   useEffect(() => {
     fetchWorkspaceMap();
   }, [trip?._id, selectedDay, activeMode]);
+
+  // Leaflet Interactive Map Rendering Effect
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+
+    // Clean up existing map instance if any
+    if (leafletMapInstanceRef.current) {
+      leafletMapInstanceRef.current.remove();
+      leafletMapInstanceRef.current = null;
+    }
+
+    // Initialize Leaflet Map centered on destination coordinates
+    const map = L.map(mapContainerRef.current, {
+      center: [centerLat, centerLng],
+      zoom: 12,
+      zoomControl: true,
+    });
+    leafletMapInstanceRef.current = map;
+
+    // Add Real OpenStreetMap Tile Layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+
+    const mapWaypoints = [];
+
+    // Hotel Marker Icon
+    const hotelLat = trip?.hotel?.coordinates?.lat || centerLat + 0.005;
+    const hotelLng = trip?.hotel?.coordinates?.lng || centerLng - 0.005;
+    const hotelName = trip?.hotel?.name || `Stay in ${destName}`;
+
+    const hotelIcon = L.divIcon({
+      className: 'custom-leaflet-marker',
+      html: `<div style="background-color: #f59e0b; color: white; width: 32px; height: 32px; borderRadius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid white;">🏨</div>`,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
+    });
+
+    const hotelMarker = L.marker([hotelLat, hotelLng], { icon: hotelIcon }).addTo(map);
+    hotelMarker.bindPopup(`<b>🏨 ${hotelName}</b><br/>Overnight Base for ${destName}`);
+    mapWaypoints.push([hotelLat, hotelLng]);
+
+    // Activity Markers & Polyline Points
+    activities.forEach((act, idx) => {
+      const actLat = act.coordinates?.lat || centerLat + (idx * 0.006 - 0.012);
+      const actLng = act.coordinates?.lng || centerLng + (idx * 0.007 - 0.014);
+      const isFood = (act.category || '').toLowerCase().includes('food') || (act.activity || '').toLowerCase().includes('dining');
+
+      const actIcon = L.divIcon({
+        className: 'custom-leaflet-marker',
+        html: `<div style="background-color: ${isFood ? '#f97316' : '#0d9488'}; color: white; width: 30px; height: 30px; borderRadius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid white;">${isFood ? '🍽️' : idx + 1}</div>`,
+        iconSize: [30, 30],
+        iconAnchor: [15, 15],
+      });
+
+      const marker = L.marker([actLat, actLng], { icon: actIcon }).addTo(map);
+      marker.bindPopup(`
+        <div style="font-family: sans-serif; font-size: 12px;">
+          <b style="color: #0d9488;">Day ${selectedDay} #${idx + 1}: ${act.activity || act.title}</b><br/>
+          <span>📍 ${act.location || destName} (${act.timeSlot || 'Slot'})</span><br/>
+          <span>⏱️ Duration: ${act.durationMinutes || 90} mins | Cost: ₹${act.estimatedCost || 0}</span>
+        </div>
+      `);
+
+      mapWaypoints.push([actLat, actLng]);
+    });
+
+    // Draw Real Route Polyline
+    if (mapWaypoints.length > 1) {
+      L.polyline(mapWaypoints, {
+        color: '#0d9488',
+        weight: 4,
+        opacity: 0.85,
+        dashArray: '6, 8',
+      }).addTo(map);
+
+      // Fit map view to waypoints bounds
+      map.fitBounds(L.latLngBounds(mapWaypoints), { padding: [50, 50] });
+    }
+
+    return () => {
+      if (leafletMapInstanceRef.current) {
+        leafletMapInstanceRef.current.remove();
+        leafletMapInstanceRef.current = null;
+      }
+    };
+  }, [trip, itinerary, selectedDay]);
 
   const handleOptimizeRoute = async () => {
     if (!activities || activities.length === 0) return;
@@ -92,13 +192,13 @@ const MapView = ({ trip, itinerary, selectedDay = 1 }) => {
 
   return (
     <Card className="p-0 overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col min-h-[580px]">
-      {/* Map Header & Transport Controls */}
+      {/* Map Header & Controls */}
       <div className="p-4 bg-slate-900 text-white flex flex-col sm:flex-row items-center justify-between gap-3 z-10 border-b border-slate-800">
         <div className="flex items-center gap-2">
           <Navigation className="w-4 h-4 text-secondary-400" />
           <div>
-            <span className="text-xs font-bold text-white block">{destName} Interactive Route Map</span>
-            <span className="text-[10px] text-slate-400">Day {selectedDay} Sequence & Transport Intelligence</span>
+            <span className="text-xs font-bold text-white block">{destName} Real Interactive Route Map</span>
+            <span className="text-[10px] text-slate-400">Day {selectedDay} OpenStreetMap Routing & Waypoints</span>
           </div>
         </div>
 
@@ -137,87 +237,24 @@ const MapView = ({ trip, itinerary, selectedDay = 1 }) => {
         </div>
       )}
 
-      {/* Map Canvas Visualizer */}
-      <div className="flex-1 bg-slate-950 relative flex items-center justify-center overflow-hidden min-h-[400px]">
-        <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] opacity-60" />
-
-        {/* Route Connection Polylines SVG */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none stroke-secondary-500/50 stroke-2 stroke-dasharray-4">
-          <path d="M 120 180 Q 250 120 380 260 T 540 190" fill="none" />
-        </svg>
-
-        {/* Airport Marker */}
-        {(activeLayer === 'all' || activeLayer === 'airport') && (
-          <div className="absolute top-10 left-12 group cursor-pointer z-10">
-            <div className="w-8 h-8 rounded-full bg-sky-500 text-white flex items-center justify-center shadow-lg ring-4 ring-sky-500/20 group-hover:scale-110 transition">
-              <Plane className="w-4 h-4" />
-            </div>
-            <span className="absolute left-9 top-1 text-[10px] font-bold bg-slate-900/95 text-sky-400 px-2 py-0.5 rounded-md backdrop-blur-md shadow whitespace-nowrap">
-              {destName} Airport
-            </span>
-          </div>
-        )}
-
-        {/* Hotel Marker */}
-        {(activeLayer === 'all' || activeLayer === 'hotel') && (
-          <div className="absolute top-24 right-20 group cursor-pointer z-10">
-            <div className="w-9 h-9 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-lg ring-4 ring-amber-500/20 group-hover:scale-110 transition">
-              <Building2 className="w-4.5 h-4.5" />
-            </div>
-            <span className="absolute right-10 top-1 text-[10px] font-bold bg-slate-900/95 text-amber-400 px-2 py-0.5 rounded-md backdrop-blur-md shadow whitespace-nowrap">
-              {trip?.hotel?.name || 'Stay Location'}
-            </span>
-          </div>
-        )}
-
-        {/* Activities / Attractions / Restaurants Markers */}
-        {(activeLayer === 'all' || activeLayer === 'activities') &&
-          activities.slice(0, 5).map((act, idx) => {
-            const positions = [
-              { top: '38%', left: '28%' },
-              { top: '55%', left: '52%' },
-              { top: '32%', left: '72%' },
-              { top: '68%', left: '40%' },
-              { top: '75%', left: '68%' },
-            ];
-            const pos = positions[idx % positions.length];
-            const isFood = (act.category || '').toLowerCase().includes('food') || (act.activity || '').toLowerCase().includes('dining');
-
-            return (
-              <div
-                key={act._id || idx}
-                style={{ top: pos.top, left: pos.left }}
-                className="absolute group cursor-pointer z-20"
-              >
-                <div
-                  className={`w-8 h-8 rounded-full ${
-                    isFood ? 'bg-orange-500 ring-orange-500/20' : 'bg-emerald-500 ring-emerald-500/20'
-                  } text-white font-black text-xs flex items-center justify-center shadow-lg ring-4 group-hover:scale-110 transition`}
-                >
-                  {isFood ? <Utensils className="w-3.5 h-3.5" /> : idx + 1}
-                </div>
-                <div className="absolute left-9 top-0 text-[11px] bg-slate-900/95 text-white px-2.5 py-1 rounded-lg backdrop-blur-md border border-slate-800 shadow-xl opacity-90 group-hover:opacity-100 transition whitespace-nowrap">
-                  <p className="font-bold text-emerald-400">{act.activity || act.title}</p>
-                  <p className="text-[10px] text-slate-400">{act.location || destName} • {act.timeSlot || 'slot'}</p>
-                </div>
-              </div>
-            );
-          })}
+      {/* REAL LEAFLET INTERACTIVE MAP CONTAINER */}
+      <div className="flex-1 bg-slate-100 dark:bg-slate-950 relative min-h-[440px]">
+        <div ref={mapContainerRef} className="w-full h-full min-h-[440px] z-0" />
 
         {/* Route Optimization Floating Button */}
-        <div className="absolute top-4 right-4 z-30">
+        <div className="absolute top-3 right-3 z-20">
           <button
             onClick={handleOptimizeRoute}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-secondary-600 hover:bg-secondary-500 text-white font-bold text-xs shadow-lg transition-all"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-secondary-600 hover:bg-secondary-500 text-white font-bold text-xs shadow-xl transition-all"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>AI Optimize Sequence</span>
           </button>
         </div>
 
-        {/* Map Telemetry Footer */}
-        <div className="absolute bottom-4 left-4 right-4 p-3 rounded-xl bg-slate-900/90 border border-slate-800 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-300">
+        {/* Map Legend & Telemetry Footer */}
+        <div className="absolute bottom-3 left-3 right-3 p-3 rounded-xl bg-slate-900/90 border border-slate-800 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-300 z-20">
           <div className="flex items-center gap-3 text-slate-300">
             <span className="flex items-center gap-1 text-slate-400">
               <MapPin className="w-3.5 h-3.5 text-secondary-400" />
@@ -233,7 +270,7 @@ const MapView = ({ trip, itinerary, selectedDay = 1 }) => {
 
           <div className="flex items-center gap-1.5">
             <Badge variant="emerald" size="sm">
-              OSRM Active
+              OpenStreetMap + Leaflet Real Tiles
             </Badge>
           </div>
         </div>

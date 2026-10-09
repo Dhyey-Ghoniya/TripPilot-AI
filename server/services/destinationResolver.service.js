@@ -122,9 +122,63 @@ class DestinationResolverService {
   }
 
   /**
+  /**
    * Geocode destination query via Open-Meteo Geocoding API with Ambiguity Detection
    */
   async fetchGeocode(query) {
+    const queryLower = (query || '').trim().toLowerCase();
+
+    // Known Major City Quick Overrides to guarantee 100% accurate coordinates for key destinations
+    const KNOWN_CITIES = {
+      'bangalore': { name: 'Bangalore', city: 'Bangalore', country: 'India', countryCode: 'IN', region: 'Karnataka', latitude: 12.9716, longitude: 77.5946, timezone: 'Asia/Kolkata', currency: 'INR' },
+      'bengaluru': { name: 'Bengaluru', city: 'Bengaluru', country: 'India', countryCode: 'IN', region: 'Karnataka', latitude: 12.9716, longitude: 77.5946, timezone: 'Asia/Kolkata', currency: 'INR' },
+      'ahmedabad': { name: 'Ahmedabad', city: 'Ahmedabad', country: 'India', countryCode: 'IN', region: 'Gujarat', latitude: 23.0225, longitude: 72.5714, timezone: 'Asia/Kolkata', currency: 'INR' },
+      'delhi': { name: 'Delhi', city: 'Delhi', country: 'India', countryCode: 'IN', region: 'Delhi', latitude: 28.6139, longitude: 77.2090, timezone: 'Asia/Kolkata', currency: 'INR' },
+      'mumbai': { name: 'Mumbai', city: 'Mumbai', country: 'India', countryCode: 'IN', region: 'Maharashtra', latitude: 19.0760, longitude: 72.8777, timezone: 'Asia/Kolkata', currency: 'INR' },
+      'goa': { name: 'Goa', city: 'Goa', country: 'India', countryCode: 'IN', region: 'Goa', latitude: 15.2993, longitude: 74.1240, timezone: 'Asia/Kolkata', currency: 'INR' },
+      'tokyo': { name: 'Tokyo', city: 'Tokyo', country: 'Japan', countryCode: 'JP', region: 'Tokyo', latitude: 35.6762, longitude: 139.6503, timezone: 'Asia/Tokyo', currency: 'JPY' },
+      'reykjavik': { name: 'Reykjavik', city: 'Reykjavik', country: 'Iceland', countryCode: 'IS', region: 'Capital Region', latitude: 64.1466, longitude: -21.9426, timezone: 'Atlantic/Reykjavik', currency: 'EUR' },
+      'kyoto': { name: 'Kyoto', city: 'Kyoto', country: 'Japan', countryCode: 'JP', region: 'Kansai', latitude: 35.0116, longitude: 135.7681, timezone: 'Asia/Tokyo', currency: 'JPY' },
+      'cape town': { name: 'Cape Town', city: 'Cape Town', country: 'South Africa', countryCode: 'ZA', region: 'Western Cape', latitude: -33.9249, longitude: 18.4241, timezone: 'Africa/Johannesburg', currency: 'ZAR' },
+      'buenos aires': { name: 'Buenos Aires', city: 'Buenos Aires', country: 'Argentina', countryCode: 'AR', region: 'Buenos Aires', latitude: -34.6037, longitude: -58.3816, timezone: 'America/Argentina/Buenos_Aires', currency: 'ARS' },
+    };
+
+    if (KNOWN_CITIES[queryLower]) {
+      const match = KNOWN_CITIES[queryLower];
+      const countryIntel = COUNTRY_INTELLIGENCE[match.countryCode] || { currency: match.currency, defaultLanguage: 'Local Language / English' };
+      return {
+        isResolved: true,
+        name: match.name,
+        canonicalName: `${match.name}, ${match.region}, ${match.country}`,
+        city: match.city,
+        state: match.region,
+        country: match.country,
+        countryCode: match.countryCode,
+        region: match.region,
+        latitude: match.latitude,
+        longitude: match.longitude,
+        timezone: match.timezone,
+        currency: match.currency,
+        language: countryIntel.defaultLanguage,
+        destinationType: 'CITY',
+        isSpecialDestination: false,
+        description: `${match.name} is a premier destination in ${match.country} (${match.region}), offering rich culture, vibrant sights, and world-class hospitality.`,
+        popularAreas: this.generateDynamicPopularAreas(match.name, match.region, match.country, 'CITY'),
+        attractions: this.generateDynamicAttractions(match.name, match.region, match.country, 'CITY'),
+        activities: this.generateDynamicActivities(match.name, match.region, match.country, 'CITY'),
+        transport: match.countryCode === 'IN' ? ['Local Cabs & Auto', 'Metro / City Bus', 'Intercity Train'] : ['Public Transit', 'Taxi / Ride Hailing'],
+        bestTime: 'October to March (Pleasant Season)',
+        travelTips: [`Check local weather before day trips in ${match.name}.`, 'Book central accommodations.'],
+        coverImage: this.getCoverImageForDestination(match.name, match.country, 'CITY'),
+        provenance: {
+          source: 'KNOWN_MAJOR_CITY_REGISTRY',
+          retrievedAt: new Date().toISOString(),
+          verifiedFields: ['name', 'canonicalName', 'latitude', 'longitude', 'country', 'countryCode'],
+          estimatedFields: ['attractions', 'activities'],
+        },
+      };
+    }
+
     const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=10&language=en&format=json`;
 
     const res = await fetch(url);
@@ -135,43 +189,48 @@ class DestinationResolverService {
       return null;
     }
 
-    const results = data.results;
+    // Sort results by population descending to prioritize major cities over tiny villages
+    const results = data.results.slice().sort((a, b) => (b.population || 0) - (a.population || 0));
 
     // ─────────────────────────────────────────────────────────────────
     // AMBIGUITY DETECTION: If query is plain (no comma) and matches multiple distinct places
     // ─────────────────────────────────────────────────────────────────
     if (!query.includes(',') && results.length > 1) {
-      const queryLower = query.trim().toLowerCase();
       // Filter results where place name matches user query
       const exactNameMatches = results.filter((r) => r.name.toLowerCase() === queryLower);
 
       if (exactNameMatches.length > 1) {
-        const candidates = exactNameMatches.slice(0, 4).map((r) => ({
-          name: r.name,
-          region: r.admin1 || r.admin2 || '',
-          country: r.country || '',
-          countryCode: (r.country_code || '').toUpperCase(),
-          canonicalName: `${r.name}${r.admin1 ? `, ${r.admin1}` : ''}, ${r.country || ''}`,
-          latitude: Number(r.latitude),
-          longitude: Number(r.longitude),
-        }));
+        // If one exact match has significantly higher population (e.g. > 100,000), prefer it over villages
+        const topPop = exactNameMatches[0].population || 0;
+        const secondPop = exactNameMatches[1].population || 0;
 
-        // Distinct countries or admin regions
-        const uniqueCanonicals = new Set(candidates.map((c) => c.canonicalName));
-        if (uniqueCanonicals.size > 1) {
-          const candidateListStr = candidates.map((c, idx) => `${idx + 1}. ${c.canonicalName}`).join('\n');
-          return {
-            isResolved: false,
-            isAmbiguous: true,
-            query,
-            candidates,
-            copilotMessage: `I found multiple destinations matching "${query}". Which one would you like to plan for?\n${candidateListStr}`,
-            provenance: {
-              source: 'OPEN_METEO_GEOCODING_AMBIGUOUS',
-              retrievedAt: new Date().toISOString(),
-              candidatesCount: candidates.length,
-            },
-          };
+        if (!(topPop > 100000 && topPop > secondPop * 5)) {
+          const candidates = exactNameMatches.slice(0, 4).map((r) => ({
+            name: r.name,
+            region: r.admin1 || r.admin2 || '',
+            country: r.country || '',
+            countryCode: (r.country_code || '').toUpperCase(),
+            canonicalName: `${r.name}${r.admin1 ? `, ${r.admin1}` : ''}, ${r.country || ''}`,
+            latitude: Number(r.latitude),
+            longitude: Number(r.longitude),
+          }));
+
+          const uniqueCanonicals = new Set(candidates.map((c) => c.canonicalName));
+          if (uniqueCanonicals.size > 1) {
+            const candidateListStr = candidates.map((c, idx) => `${idx + 1}. ${c.canonicalName}`).join('\n');
+            return {
+              isResolved: false,
+              isAmbiguous: true,
+              query,
+              candidates,
+              copilotMessage: `I found multiple destinations matching "${query}". Which one would you like to plan for?\n${candidateListStr}`,
+              provenance: {
+                source: 'OPEN_METEO_GEOCODING_AMBIGUOUS',
+                retrievedAt: new Date().toISOString(),
+                candidatesCount: candidates.length,
+              },
+            };
+          }
         }
       }
     }
@@ -268,6 +327,29 @@ class DestinationResolverService {
     if (lowerName.includes('tokyo')) {
       return ['Shibuya & Harajuku', 'Shinjuku Skyscraper Corridor', 'Asakusa & Ueno Historic Quarter', 'Ginza & Tsukiji District'];
     }
+    if (lowerName.includes('bangalore') || lowerName.includes('bengaluru')) {
+      return [
+        'MG Road & Brigade Road Commercial District',
+        'Indiranagar & 100 Feet Road Food Corridor',
+        'Koramangala & Forum Hub',
+        'Cubbon Park & Vidhana Soudha Enclave',
+        'Lalbagh Botanical Gardens Quarter',
+        'Malleshwaram Heritage District',
+        'Jayanagar & Basavanagudi Old Bangalore',
+        'Whitefield Tech Corridor',
+        'Nandi Hills Outskirts',
+      ];
+    }
+    if (lowerName.includes('ahmedabad')) {
+      return [
+        'Sabarmati Riverfront Promenade',
+        'Old City Walled Heritage Quarter',
+        'Law Garden & CG Road Market',
+        'Bodakdev & SG Highway Corridor',
+        'Kankaria Lake Enclave',
+        'Gandhinagar & GIFT City Enclave',
+      ];
+    }
     if (lowerName.includes('reykjavik')) {
       return ['Downtown Skólavörðustígur', 'Old Harbour Waterfront', 'Laugavegur Shopping District', 'Grandivík Maritime Quarter'];
     }
@@ -292,8 +374,45 @@ class DestinationResolverService {
   generateDynamicAttractions(name, region, country, type) {
     const lowerName = name.toLowerCase();
 
+    if (lowerName.includes('bangalore') || lowerName.includes('bengaluru')) {
+      return [
+        'Lalbagh Botanical Garden & Glass House',
+        'Cubbon Park & Bamboo Groves',
+        'Bangalore Palace & Royal Grounds',
+        'Tipu Sultan’s Summer Palace',
+        'Bull Temple & Bugle Rock Basavanagudi',
+        'ISKCON Temple Rajajinagar',
+        'Vidhana Soudha & Attara Kacheri High Court',
+        'Visvesvaraya Industrial & Technological Museum',
+        'HAL Heritage Centre & Aerospace Museum',
+        'National Gallery of Modern Art (NGMA)',
+        'Bannerghatta Biological Park & Safari',
+        'Nandi Hills Sunrise Point & Ancient Fort',
+        'Commercial Street & Chickpet Bazaar',
+        'Ulsoor Lake & Boating Promenade',
+        'Jawaharlal Nehru Planetarium',
+        'Devanahalli Fort Enclave',
+        'Channapatna Wooden Toy & Craft Village',
+        'Shivanasamudra Waterfalls Day Trip Spot',
+        'Mysore Palace & Brindavan Gardens (Full Day Excursion)',
+      ];
+    }
+    if (lowerName.includes('ahmedabad')) {
+      return [
+        'Sabarmati Ashram (Gandhi Ashram)',
+        'Adalaj Stepwell (Adalaj ni Vav)',
+        'Jama Masjid & Manek Chowk Night Market',
+        'Sidi Saiyyed Mosque (Stone Jali Windows)',
+        'Kankaria Lake & Zoo Promenade',
+        'Gujarat Science City & Aquatic Gallery',
+        'Calico Museum of Textiles',
+        'Akshardham Temple Gandhinagar',
+        'Auto World Vintage Car Museum',
+        'Hutheesing Jain Temple',
+      ];
+    }
     if (lowerName.includes('tokyo')) {
-      return ['Senso-ji Temple & Nakamise-dori', 'Meiji Shrine & Forest Sanctuary', 'Tokyo Skytree Panoramic Deck', 'Tsukiji Outer Food Market', 'Shibuya Scramble Crossing'];
+      return ['Senso-ji Temple & Nakamise-dori', 'Meiji Shrine & Forest Sanctuary', 'Tokyo Skytree Panoramic Deck', 'Tsukiji Outer Food Market', 'Shibuya Scramble Crossing', 'Akihabara Electric Town', 'Ueno Park & Museums', 'TeamLab Planets Digital Art Museum', 'Imperial Palace Gardens'];
     }
     if (lowerName.includes('reykjavik')) {
       return ['Hallgrímskirkja Cathedral & Viewpoint', 'Harpa Concert Hall & Glass Architecture', 'Sun Voyager Sculpture Waterfront', 'National Museum of Iceland', 'Perlan Wonders of Iceland Observatory'];
@@ -323,8 +442,28 @@ class DestinationResolverService {
   generateDynamicActivities(name, region, country, type) {
     const lowerName = name.toLowerCase();
 
+    if (lowerName.includes('bangalore') || lowerName.includes('bengaluru')) {
+      return [
+        'Craft Brewery & Gastropub Hop on Indiranagar 100 Ft Road',
+        'Authentic South Indian Masala Dosa Breakfast at Vidyarthi Bhavan / CTR',
+        'Filter Coffee & Evening Street Food Trail at VV Puram Food Street',
+        'Silk Saree & Handicraft Shopping in Chickpet & Commercial Street',
+        'Early Morning Sunrise Hike to Nandi Hills',
+        'Curated Art Walk at National Gallery of Modern Art',
+        'Heritage Bicycle Tour of Old Bangalore Basavanagudi',
+        'Full Day Excursion to Mysore Palace & Chamundi Hill',
+      ];
+    }
+    if (lowerName.includes('ahmedabad')) {
+      return [
+        'Heritage Walk through Old City Pols & Haveli Architecture',
+        'Gujarati Thali Culinary Experience at Agashiye / Gordhan Thal',
+        'Night Street Food Tasting at Manek Chowk',
+        'Kankaria Lake Evening Light & Sound Show',
+      ];
+    }
     if (lowerName.includes('tokyo')) {
-      return ['Robot Restaurant / TeamLab Planets Digital Art Immersion', 'Authentic Ramen & Izakaya Crawl', 'Traditional Tea Ceremony Experience', 'Sumo Wrestling Practice Tour'];
+      return ['TeamLab Planets Digital Art Immersion', 'Authentic Ramen & Izakaya Crawl', 'Traditional Tea Ceremony Experience', 'Sumo Wrestling Practice Tour'];
     }
     if (lowerName.includes('reykjavik')) {
       return ['Golden Circle Day Tour (Geysir, Gullfoss & Thingvellir)', 'Blue Lagoon Thermal Spa Bath', 'Northern Lights Aurora Borealis Night Hunt', 'South Coast Waterfalls & Black Sand Beach Excursion'];
@@ -430,19 +569,42 @@ class DestinationResolverService {
    */
   synthesizeDestinationContext(rawName) {
     const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+    const lowerName = rawName.toLowerCase();
+
+    let lat = 20.5937;
+    let lng = 78.9629;
+    let country = 'Global Destination';
+    let currency = 'USD';
+
+    if (lowerName.includes('bangalore') || lowerName.includes('bengaluru')) {
+      lat = 12.9716; lng = 77.5946; country = 'India'; currency = 'INR';
+    } else if (lowerName.includes('ahmedabad')) {
+      lat = 23.0225; lng = 72.5714; country = 'India'; currency = 'INR';
+    } else if (lowerName.includes('delhi')) {
+      lat = 28.6139; lng = 77.2090; country = 'India'; currency = 'INR';
+    } else if (lowerName.includes('mumbai')) {
+      lat = 19.0760; lng = 72.8777; country = 'India'; currency = 'INR';
+    } else if (lowerName.includes('goa')) {
+      lat = 15.2993; lng = 74.1240; country = 'India'; currency = 'INR';
+    } else if (lowerName.includes('tokyo')) {
+      lat = 35.6762; lng = 139.6503; country = 'Japan'; currency = 'JPY';
+    } else if (lowerName.includes('reykjavik')) {
+      lat = 64.1466; lng = -21.9426; country = 'Iceland'; currency = 'EUR';
+    }
+
     return {
       isResolved: true,
       name: formattedName,
-      canonicalName: `${formattedName}, Global Destination`,
+      canonicalName: `${formattedName}, ${country}`,
       city: formattedName,
-      country: 'Global Destination',
-      countryCode: 'INTL',
+      country,
+      countryCode: country === 'India' ? 'IN' : 'INTL',
       region: 'Travel Region',
-      latitude: 20.5937,
-      longitude: 78.9629,
-      timezone: 'UTC',
-      currency: 'USD',
-      language: 'Local Language / English',
+      latitude: lat,
+      longitude: lng,
+      timezone: country === 'India' ? 'Asia/Kolkata' : 'UTC',
+      currency,
+      language: country === 'India' ? 'Hindi / English' : 'Local Language / English',
       destinationType: 'CITY',
       isSpecialDestination: false,
       description: `${formattedName} is a wonderful travel destination offering unique cultural experiences, scenic sights, and vibrant local life.`,
@@ -483,6 +645,7 @@ class DestinationResolverService {
     else if (lowerName === 'goa') { latitude = 15.2993; longitude = 74.1240; }
     else if (lowerName === 'delhi') { latitude = 28.6139; longitude = 77.2090; }
     else if (lowerName === 'ahmedabad') { latitude = 23.0225; longitude = 72.5714; }
+    else if (lowerName.includes('bangalore') || lowerName.includes('bengaluru')) { latitude = 12.9716; longitude = 77.5946; }
     else if (lowerName === 'tokyo') { latitude = 35.6762; longitude = 139.6503; }
     else if (lowerName === 'reykjavik') { latitude = 64.1466; longitude = -21.9426; }
 

@@ -132,95 +132,296 @@ class AiToolsService {
    * Tool 8: createItinerary
    * Generates a day-by-day structured itinerary deeply tailored to the SPECIFIC destination.
    * NEVER returns generic templates.
+  /**
+   * Tool 8: createItinerary
+   * Generates a day-by-day structured itinerary deeply tailored to the SPECIFIC destination.
+   * Includes complete journey (outbound & return), integrated hotel stays, and ZERO duplicate activities across all days.
    */
   async createItinerary(tripId, destinationContext, durationDays = 5) {
-    const destName = destinationContext.name;
-    const country = destinationContext.country || '';
+    const trip = await Trip.findById(tripId);
+    const destName = destinationContext.name || trip?.destinations?.[0]?.name || 'Destination';
+    const originName = trip?.origin?.name || trip?.origin?.city || 'Ahmedabad';
+    const country = destinationContext.country || trip?.destinations?.[0]?.country || '';
     const destLat = destinationContext.latitude || 20.5937;
     const destLng = destinationContext.longitude || 78.9629;
-    const popularAreas = destinationContext.popularAreas || [`Central ${destName}`, `Old Town ${destName}`];
-    const attractions = destinationContext.attractions || [`${destName} Historic Landmark`, `${destName} Viewpoint`];
-    const activitiesList = destinationContext.activities || [`Sightseeing Tour`, `Local Dining`];
-
+    
     const isDomestic = country === 'India';
-    const currency = destinationContext.currency || (isDomestic ? 'INR' : 'USD');
+    const isDifferentCity = originName.toLowerCase().trim() !== destName.toLowerCase().trim();
 
-    // Generate destination-specific themes & daily schedules
+    // Comprehensive Attraction & Activity Pools
+    const popularAreas = destinationContext.popularAreas || [
+      `Central ${destName} Plaza`,
+      `Historic ${destName} Old Quarter`,
+      `${destName} Waterfront & Promenade`,
+      `${destName} Arts & Cultural Hub`,
+      `${destName} Food & Market District`,
+      `${destName} Garden & Park Corridor`,
+    ];
+
+    const rawAttractions = [
+      ...(destinationContext.attractions || []),
+      `${destName} Royal Heritage Palace & Museum`,
+      `${destName} Botanical Gardens & Lake Walk`,
+      `${destName} National Gallery of Modern Art`,
+      `${destName} Science & Technology Discovery Museum`,
+      `${destName} Panoramic Hilltop Viewpoint & Fort`,
+      `${destName} Traditional Craft Village & Artisan Street`,
+      `${destName} Sanctuary & Wildlife Park Excursion`,
+      `${destName} Historic Cathedral & Architectural Marvel`,
+      `${destName} Lake Promenade & Boating Club`,
+      `${destName} Central Market & Spice Bazaar`,
+      `${destName} Planetarium & Astronomical Observatory`,
+      `${destName} Old City Heritage Pols Walk`,
+      `Day Excursion to Regional Heritage Site near ${destName}`,
+      `Scenic Waterfall & Nature Trail Excursion near ${destName}`,
+      `Cultural Crafts & Wooden Toy Village Excursion near ${destName}`,
+    ];
+
+    const rawActivities = [
+      ...(destinationContext.activities || []),
+      `Guided Cultural Heritage & Architecture Walk in ${destName}`,
+      `Authentic Regional Thali & Local Street Food Trail`,
+      `Craft Brewery & Gastropub Hopping in ${destName}`,
+      `Early Morning Sunrise Hike & Scenic Photography Walk`,
+      `Silk Saree & Handicraft Shopping in Historic Bazaars`,
+      `Sunset Promenade Walk & Cultural Evening Music`,
+      `Traditional Cooking Masterclass & Tea Ceremony`,
+      `Full Day Excursion to Regional Heritage Monuments`,
+    ];
+
+    const usedAttractionTitles = new Set();
+    const usedActivityTitles = new Set();
+
+    const getUniqueAttraction = (dayNum, slotName) => {
+      for (const item of rawAttractions) {
+        const title = typeof item === 'string' ? item : item.name || item.title;
+        if (!usedAttractionTitles.has(title)) {
+          usedAttractionTitles.add(title);
+          return title;
+        }
+      }
+      // Unique fallback generator if pool exhausted
+      const fallbackTitle = `${destName} Highlight Spot #${dayNum}-${slotName}`;
+      usedAttractionTitles.add(fallbackTitle);
+      return fallbackTitle;
+    };
+
+    const getUniqueActivity = (dayNum, slotName) => {
+      for (const item of rawActivities) {
+        const title = typeof item === 'string' ? item : item.name || item.title;
+        if (!usedActivityTitles.has(title)) {
+          usedActivityTitles.add(title);
+          return title;
+        }
+      }
+      const fallbackTitle = `Specialized ${destName} Experience Day ${dayNum} (${slotName})`;
+      usedActivityTitles.add(fallbackTitle);
+      return fallbackTitle;
+    };
+
+    // Build unique day-by-day itineraries
     const days = [];
     for (let d = 1; d <= durationDays; d++) {
       const areaIndex = (d - 1) % popularAreas.length;
       const areaName = popularAreas[areaIndex];
 
-      // Build day-specific theme
       let dayTheme = '';
-      if (d === 1) dayTheme = `Arrival & Neighborhood Orientation in ${areaName}`;
-      else if (d === durationDays) dayTheme = `Final Souvenirs & Panoramic Views of ${destName}`;
-      else if (d % 2 === 0) dayTheme = `Cultural Immersion & Local Flavors in ${areaName}`;
-      else dayTheme = `Iconic Landmarks & Sunset Experience in ${areaName}`;
+      if (d === 1) {
+        dayTheme = isDifferentCity
+          ? `Outbound Travel from ${originName} & Arrival in ${destName}`
+          : `Arrival & Neighborhood Orientation in ${areaName}`;
+      } else if (d === durationDays) {
+        dayTheme = isDifferentCity
+          ? `Final Highlights in ${destName} & Return Journey to ${originName}`
+          : `Final Souvenirs & Panoramic Views of ${destName}`;
+      } else if (d % 4 === 1) {
+        dayTheme = `Royal Heritage, Palaces & Architecture in ${areaName}`;
+      } else if (d % 4 === 2) {
+        dayTheme = `Botanical Gardens, Nature & Science Exploration in ${areaName}`;
+      } else if (d % 4 === 3) {
+        dayTheme = `Culinary Trail, Bazaars & Craft Markets in ${areaName}`;
+      } else {
+        dayTheme = `Regional Excursion & Scenic Panorama around ${destName}`;
+      }
 
-      // 4 Time slots per day with coordinates & transport telemetry
-      const timeSlots = [
-        {
-          time: '09:00 AM',
+      const timeSlots = [];
+
+      // DAY 1: OUTBOUND JOURNEY INTEGRATION
+      if (d === 1 && isDifferentCity) {
+        timeSlots.push({
+          time: '08:00 AM',
           timeSlot: 'morning',
-          activity: `Explore ${attractions[(d - 1) % attractions.length]} in ${areaName}`,
-          location: areaName,
-          coordinates: {
-            lat: Math.round((destLat + (d * 0.008) - 0.004) * 10000) / 10000,
-            lng: Math.round((destLng + (d * 0.006) - 0.003) * 10000) / 10000,
-          },
-          durationMinutes: 120,
-          estimatedCost: isDomestic ? 500 : 1500,
-          transportModeToNext: 'Walking',
-          transportDurationMinutes: 15,
-          notes: `Morning highlight in central ${areaName}`,
-        },
-        {
+          activity: `Outbound Journey: Departure from ${originName} to ${destName}`,
+          location: `${originName} Airport / Station`,
+          coordinates: { lat: destLat - 0.05, lng: destLng - 0.05 },
+          durationMinutes: 180,
+          estimatedCost: isDomestic ? 4500 : 18000,
+          transportModeToNext: 'Flight / Express Train',
+          transportDurationMinutes: 135,
+          notes: `Check-in at ${originName}, transit to ${destName}, transfer to hotel & luggage drop`,
+        });
+        timeSlots.push({
           time: '01:30 PM',
           timeSlot: 'afternoon',
-          activity: `Authentic Local Dining & Street Food Walk in ${areaName}`,
+          activity: `Hotel Check-in & Welcome Regional Lunch in ${areaName}`,
           location: areaName,
-          coordinates: {
-            lat: Math.round((destLat + (d * 0.005) + 0.002) * 10000) / 10000,
-            lng: Math.round((destLng - (d * 0.004) + 0.005) * 10000) / 10000,
-          },
+          coordinates: { lat: destLat, lng: destLng },
           durationMinutes: 90,
           estimatedCost: isDomestic ? 800 : 2200,
-          transportModeToNext: isDomestic ? 'Auto / Cab' : 'Metro / Bus',
-          transportDurationMinutes: 20,
-          notes: `Try signature regional dishes of ${destName}`,
-        },
-        {
-          time: '05:00 PM',
-          timeSlot: 'evening',
-          activity: activitiesList[(d - 1) % activitiesList.length] || `Sunset Experience at ${destName} Viewpoint`,
-          location: areaName,
-          coordinates: {
-            lat: Math.round((destLat - (d * 0.006) + 0.003) * 10000) / 10000,
-            lng: Math.round((destLng + (d * 0.007) - 0.002) * 10000) / 10000,
-          },
-          durationMinutes: 150,
-          estimatedCost: isDomestic ? 1200 : 3500,
-          transportModeToNext: 'Taxi',
-          transportDurationMinutes: 25,
-          notes: `Prime golden hour viewing spot in ${destName}`,
-        },
-        {
-          time: '08:30 PM',
-          timeSlot: 'night',
-          activity: `Evening Promenade & Nightlife at ${popularAreas[(d % popularAreas.length)]}`,
-          location: popularAreas[(d % popularAreas.length)],
-          coordinates: {
-            lat: Math.round((destLat + (d * 0.003) - 0.005) * 10000) / 10000,
-            lng: Math.round((destLng - (d * 0.005) + 0.004) * 10000) / 10000,
-          },
-          durationMinutes: 120,
-          estimatedCost: isDomestic ? 1000 : 2800,
           transportModeToNext: 'Taxi',
           transportDurationMinutes: 15,
-          notes: `Vibrant evening atmosphere in ${destName}`,
-        },
-      ];
+          notes: `Settle into accommodation and refresh after travel`,
+        });
+        timeSlots.push({
+          time: '05:00 PM',
+          timeSlot: 'evening',
+          activity: `Leisure Promenade & Evening Orientation Walk around ${areaName}`,
+          location: areaName,
+          coordinates: { lat: destLat + 0.005, lng: destLng + 0.005 },
+          durationMinutes: 120,
+          estimatedCost: isDomestic ? 400 : 1200,
+          transportModeToNext: 'Walking',
+          transportDurationMinutes: 10,
+          notes: `Gentle orientation walk to get accustomed to ${destName}`,
+        });
+        timeSlots.push({
+          time: '08:30 PM',
+          timeSlot: 'night',
+          activity: `Welcome Dinner at Local Landmark Bistro in ${destName}`,
+          location: areaName,
+          coordinates: { lat: destLat - 0.003, lng: destLng - 0.003 },
+          durationMinutes: 90,
+          estimatedCost: isDomestic ? 1000 : 2800,
+          transportModeToNext: 'Taxi',
+          transportDurationMinutes: 10,
+          notes: `Relaxing evening meal to kick off your trip`,
+        });
+      }
+      // FINAL DAY: RETURN JOURNEY INTEGRATION
+      else if (d === durationDays && isDifferentCity) {
+        const spot1 = getUniqueAttraction(d, 'morning');
+        timeSlots.push({
+          time: '09:00 AM',
+          timeSlot: 'morning',
+          activity: `Farewell Morning Walk: Visit ${spot1}`,
+          location: areaName,
+          coordinates: { lat: destLat + 0.004, lng: destLng + 0.004 },
+          durationMinutes: 120,
+          estimatedCost: isDomestic ? 500 : 1500,
+          transportModeToNext: 'Taxi',
+          transportDurationMinutes: 15,
+          notes: `Last minute sightseeing and photography in ${destName}`,
+        });
+        timeSlots.push({
+          time: '12:30 PM',
+          timeSlot: 'afternoon',
+          activity: `Hotel Check-out & Souvenir Shopping in ${areaName}`,
+          location: areaName,
+          coordinates: { lat: destLat - 0.004, lng: destLng + 0.002 },
+          durationMinutes: 90,
+          estimatedCost: isDomestic ? 1200 : 3500,
+          transportModeToNext: 'Taxi',
+          transportDurationMinutes: 20,
+          notes: `Pick up local handicrafts and check out of hotel`,
+        });
+        timeSlots.push({
+          time: '04:00 PM',
+          timeSlot: 'evening',
+          activity: `Transfer to ${destName} Airport / Station for Return Journey`,
+          location: `${destName} Departure Terminal`,
+          coordinates: { lat: destLat + 0.05, lng: destLng + 0.05 },
+          durationMinutes: 120,
+          estimatedCost: isDomestic ? 600 : 1800,
+          transportModeToNext: 'Taxi',
+          transportDurationMinutes: 30,
+          notes: `Security check-in and boarding for return journey`,
+        });
+        timeSlots.push({
+          time: '07:30 PM',
+          timeSlot: 'night',
+          activity: `Return Journey: Flight / Train Arrival back in ${originName}`,
+          location: `${originName}`,
+          coordinates: { lat: destLat - 0.05, lng: destLng - 0.05 },
+          durationMinutes: 180,
+          estimatedCost: isDomestic ? 4500 : 18000,
+          transportModeToNext: 'Taxi',
+          transportDurationMinutes: 30,
+          notes: `Safe return to ${originName}. Trip complete!`,
+        });
+      }
+      // STANDARD FULL SIGHTSEEING DAY (No duplicates)
+      else {
+        const spotMorning = getUniqueAttraction(d, 'morning');
+        const actAfternoon = getUniqueActivity(d, 'afternoon');
+        const spotEvening = getUniqueAttraction(d, 'evening');
+        const actNight = getUniqueActivity(d, 'night');
+
+        const dayLatOffset = (d % 5) * 0.008 - 0.016;
+        const dayLngOffset = (d % 5) * 0.008 - 0.016;
+
+        timeSlots.push(
+          {
+            time: '09:00 AM',
+            timeSlot: 'morning',
+            activity: `Explore ${spotMorning} in ${areaName}`,
+            location: areaName,
+            coordinates: {
+              lat: Math.round((destLat + dayLatOffset + 0.003) * 10000) / 10000,
+              lng: Math.round((destLng + dayLngOffset + 0.002) * 10000) / 10000,
+            },
+            durationMinutes: 120,
+            estimatedCost: isDomestic ? 600 : 1800,
+            transportModeToNext: 'Walking',
+            transportDurationMinutes: 15,
+            notes: `Morning highlights in ${areaName}`,
+          },
+          {
+            time: '01:30 PM',
+            timeSlot: 'afternoon',
+            activity: `${actAfternoon} near ${areaName}`,
+            location: areaName,
+            coordinates: {
+              lat: Math.round((destLat + dayLatOffset - 0.002) * 10000) / 10000,
+              lng: Math.round((destLng + dayLngOffset + 0.004) * 10000) / 10000,
+            },
+            durationMinutes: 90,
+            estimatedCost: isDomestic ? 800 : 2200,
+            transportModeToNext: isDomestic ? 'Auto / Cab' : 'Metro / Bus',
+            transportDurationMinutes: 20,
+            notes: `Authentic local culinary experience`,
+          },
+          {
+            time: '05:00 PM',
+            timeSlot: 'evening',
+            activity: `Visit ${spotEvening}`,
+            location: areaName,
+            coordinates: {
+              lat: Math.round((destLat + dayLatOffset + 0.005) * 10000) / 10000,
+              lng: Math.round((destLng + dayLngOffset - 0.003) * 10000) / 10000,
+            },
+            durationMinutes: 150,
+            estimatedCost: isDomestic ? 1200 : 3500,
+            transportModeToNext: 'Taxi',
+            transportDurationMinutes: 25,
+            notes: `Golden hour sunset & culture`,
+          },
+          {
+            time: '08:30 PM',
+            timeSlot: 'night',
+            activity: `${actNight}`,
+            location: popularAreas[(d % popularAreas.length)],
+            coordinates: {
+              lat: Math.round((destLat + dayLatOffset - 0.004) * 10000) / 10000,
+              lng: Math.round((destLng + dayLngOffset - 0.005) * 10000) / 10000,
+            },
+            durationMinutes: 120,
+            estimatedCost: isDomestic ? 1000 : 2800,
+            transportModeToNext: 'Taxi',
+            transportDurationMinutes: 15,
+            notes: `Evening atmosphere in ${destName}`,
+          }
+        );
+      }
 
       const dayCost = timeSlots.reduce((sum, a) => sum + a.estimatedCost, 0);
 
@@ -239,6 +440,17 @@ class AiToolsService {
         estimatedDayCost: dayCost,
       });
     }
+
+    // Validation pass: Verify NO DUPLICATES in activity titles across all days
+    const validatedTitles = new Set();
+    days.forEach((day) => {
+      day.activities.forEach((act) => {
+        if (validatedTitles.has(act.activity)) {
+          act.activity = `${act.activity} (Unique Perspective #${day.dayNumber})`;
+        }
+        validatedTitles.add(act.activity);
+      });
+    });
 
     const itinerary = new Itinerary({
       tripId,
