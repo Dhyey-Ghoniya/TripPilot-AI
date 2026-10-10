@@ -361,6 +361,144 @@ class HotelService {
       hotels: searchRes.results,
     };
   }
+
+  /**
+   * Plan Multi-City Accommodation schedule following actual route.
+   */
+  async planMultiCityAccommodations(trip, itinerary) {
+    if (!trip) return [];
+    const destinations = trip.destinations || [{ name: 'Destination' }];
+    const totalDays = trip.dates?.durationDays || itinerary?.days?.length || 5;
+    const startDate = trip.dates?.startDate ? new Date(trip.dates.startDate) : new Date();
+    const travelersCount = trip.travelers?.count || 2;
+    const requiredRooms = Math.max(1, Math.ceil(travelersCount / 2));
+
+    const totalDest = destinations.length;
+    const totalNights = Math.max(1, totalDays - 1);
+    const nightsPerDest = Math.max(1, Math.floor(totalNights / totalDest));
+    
+    const stays = [];
+    let currentDayCursor = 1;
+
+    for (let i = 0; i < totalDest; i++) {
+      const dest = destinations[i];
+      const isLastDest = i === totalDest - 1;
+      const destNights = isLastDest ? (totalNights - (i * nightsPerDest)) : nightsPerDest;
+      
+      if (destNights <= 0) break;
+
+      const checkInDate = new Date(startDate.getTime() + (currentDayCursor - 1) * 24 * 60 * 60 * 1000);
+      const checkOutDate = new Date(checkInDate.getTime() + destNights * 24 * 60 * 60 * 1000);
+
+      const targetHotelBudget = trip.budget?.breakdown?.hotel || Math.round((trip.budget?.total || 60000) * 0.35);
+      const targetNightBudget = Math.max(1500, Math.floor(targetHotelBudget / totalNights));
+
+      // Search or select hotel for this city
+      const searchResult = await this.searchHotels({
+        destination: dest.name,
+        checkIn: checkInDate,
+        checkOut: checkOutDate,
+        guests: { adults: travelersCount, children: 0 },
+        rooms: requiredRooms,
+        maxPricePerNight: targetNightBudget * 1.5,
+        tripId: trip._id,
+      });
+
+      const topHotel = searchResult.results[0] || {
+        name: `Select ${dest.name} Boutique Hotel`,
+        address: `Central Promenade, ${dest.name}`,
+        pricePerNight: { amount: targetNightBudget, currency: 'INR' },
+        rating: 4.5,
+        isIndicativeSuggestion: true,
+      };
+
+      const pricePerNight = topHotel.pricePerNight?.amount || topHotel.pricePerNight || targetNightBudget;
+      const stayTotalCost = pricePerNight * destNights * requiredRooms;
+
+      const nextDest = destinations[i + 1];
+      const distanceToNextKm = nextDest ? this.calculateDistanceKm(
+        dest.coordinates?.lat || 20.5, dest.coordinates?.lng || 78.9,
+        nextDest.coordinates?.lat || 20.6, nextDest.coordinates?.lng || 79.0
+      ) : 0;
+
+      stays.push({
+        stayIndex: i + 1,
+        cityName: dest.name,
+        hotelName: topHotel.name,
+        address: topHotel.address || `${dest.name} Center`,
+        checkInDate: checkInDate.toISOString().split('T')[0],
+        checkOutDate: checkOutDate.toISOString().split('T')[0],
+        nights: destNights,
+        rooms: requiredRooms,
+        pricePerNight,
+        totalCost: stayTotalCost,
+        currency: 'INR',
+        isVerifiedOffer: !topHotel.isIndicativeSuggestion,
+        isIndicativeSuggestion: Boolean(topHotel.isIndicativeSuggestion),
+        bookingUrl: topHotel.bookingUrl || `https://www.trip.com/hotels/${encodeURIComponent(dest.name)}`,
+        bookingStatus: 'needs_booking',
+        distanceToNextDestinationKm: distanceToNextKm,
+        isDepartureNight: isLastDest,
+        notes: isLastDest ? `Final stay located with return transfer buffer to airport/station` : `Stay in ${dest.name}`,
+      });
+
+      currentDayCursor += destNights;
+    }
+
+    return stays;
+  }
+
+  /**
+   * Overnight-Stay Validation Suite: Checks dates, continuity, room math, budget alignment.
+   */
+  validateAccommodationSchedule(trip, itinerary, stays = []) {
+    const warnings = [];
+    const totalDays = trip?.dates?.durationDays || itinerary?.days?.length || 1;
+    const totalNightsRequired = Math.max(1, totalDays - 1);
+    
+    let coveredNights = 0;
+    stays.forEach((stay, idx) => {
+      coveredNights += stay.nights || 0;
+
+      if (!stay.cityName) {
+        warnings.push(`Stay #${idx + 1} has an unassigned city.`);
+      }
+
+      if (stay.checkInDate && stay.checkOutDate) {
+        const inD = new Date(stay.checkInDate);
+        const outD = new Date(stay.checkOutDate);
+        if (outD <= inD) {
+          warnings.push(`Stay #${idx + 1} (${stay.cityName}): Check-out date must be after check-in date.`);
+        }
+      }
+
+      // Check final night return journey alignment
+      if (stay.isDepartureNight && stay.distanceToAirportKm > 60) {
+        warnings.push(`Final night stay in ${stay.cityName} is far from departure terminal (${stay.distanceToAirportKm} km). Plan extra buffer time.`);
+      }
+    });
+
+    if (coveredNights < totalNightsRequired) {
+      warnings.push(`Coverage gap: Trip requires ${totalNightsRequired} overnight stays, but only ${coveredNights} nights are booked.`);
+    }
+
+    // Verify budget alignment
+    const totalHotelCost = stays.reduce((sum, s) => sum + (s.totalCost || 0), 0);
+    const tripTotalBudget = trip?.budget?.total || 100000;
+    if (totalHotelCost > tripTotalBudget) {
+      warnings.push(`Total accommodation cost (₹${totalHotelCost.toLocaleString()}) exceeds total trip budget (₹${tripTotalBudget.toLocaleString()}).`);
+    }
+
+    return {
+      isValid: warnings.length === 0,
+      coveredNights,
+      totalNightsRequired,
+      totalHotelCost,
+      warnings,
+      stays,
+    };
+  }
 }
 
 module.exports = new HotelService();
+

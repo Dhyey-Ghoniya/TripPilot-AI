@@ -28,6 +28,35 @@ const CATEGORY_COLORS = {
   Adventure: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
 };
 
+const getActivityPhotoUrl = (item) => {
+  if (item.imageUrl) return item.imageUrl;
+  const title = (item.activity || item.title || '').toLowerCase();
+
+  if (title.includes('palace') || title.includes('fort') || title.includes('heritage')) {
+    return 'https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=600&q=80';
+  }
+  if (title.includes('garden') || title.includes('nature') || title.includes('park') || title.includes('botanical')) {
+    return 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80';
+  }
+  if (title.includes('food') || title.includes('culinary') || title.includes('thali') || title.includes('lunch') || title.includes('dinner') || title.includes('bistro')) {
+    return 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80';
+  }
+  if (title.includes('market') || title.includes('bazaar') || title.includes('shopping') || title.includes('craft')) {
+    return 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=600&q=80';
+  }
+  if (title.includes('cocktail') || title.includes('rooftop') || title.includes('music') || title.includes('night') || title.includes('pub')) {
+    return 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80';
+  }
+  if (title.includes('journey') || title.includes('outbound') || title.includes('return') || title.includes('departure') || title.includes('flight') || title.includes('train')) {
+    return 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=600&q=80';
+  }
+  if (title.includes('museum') || title.includes('art') || title.includes('gallery') || title.includes('science')) {
+    return 'https://images.unsplash.com/photo-1566127444979-b3d2b654e3d7?auto=format&fit=crop&w=600&q=80';
+  }
+
+  return 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=600&q=80';
+};
+
 const InteractiveTimeline = ({
   itinerary,
   selectedDay,
@@ -175,83 +204,90 @@ const InteractiveTimeline = ({
                   <div className="w-2 h-2 rounded-full bg-secondary-500" />
                 </div>
 
-                <Card className="p-5 space-y-3 hover:shadow-lg transition border border-slate-200/80 dark:border-slate-800">
-                  {/* Top Bar: Time, Category Badge, Reorder & Delete */}
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-slate-900 dark:text-white px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5 text-secondary-500" />
-                        {item.time || '10:00 AM'}
-                      </span>
-                      <span className="text-xs text-slate-500 font-semibold">
-                        ({item.durationMinutes || 90} mins)
-                      </span>
-                      <span
-                        className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${categoryStyle}`}
-                      >
-                        {item.category || item.timeSlot || 'Sightseeing'}
-                      </span>
+                <Card className="p-0 overflow-hidden hover:shadow-lg transition border border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row">
+                  <img
+                    src={getActivityPhotoUrl(item)}
+                    alt={item.activity}
+                    className="w-full sm:w-40 h-32 sm:h-auto object-cover shrink-0"
+                  />
+                  <div className="p-5 flex-1 space-y-3">
+                    {/* Top Bar: Time, Category Badge, Reorder & Delete */}
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-slate-900 dark:text-white px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5 text-secondary-500" />
+                          {item.time || '10:00 AM'}
+                        </span>
+                        <span className="text-xs text-slate-500 font-semibold">
+                          ({item.durationMinutes || 90} mins)
+                        </span>
+                        <span
+                          className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${categoryStyle}`}
+                        >
+                          {item.category || item.timeSlot || 'Sightseeing'}
+                        </span>
+                      </div>
+
+                      {/* Reorder & Action Controls */}
+                      <div className="flex items-center gap-1 opacity-90 group-hover:opacity-100 transition">
+                        <button
+                          onClick={() => moveActivityPosition(index, 'up')}
+                          disabled={index === 0}
+                          className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 disabled:opacity-30"
+                          title="Move Up"
+                        >
+                          <ArrowUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => moveActivityPosition(index, 'down')}
+                          disabled={index === currentDayObj.activities.length - 1}
+                          className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 disabled:opacity-30"
+                          title="Move Down"
+                        >
+                          <ArrowDown className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => onDeleteActivity(selectedDay, item._id)}
+                          className="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-500 transition"
+                          title="Delete Activity"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Reorder & Action Controls */}
-                    <div className="flex items-center gap-1 opacity-90 group-hover:opacity-100 transition">
-                      <button
-                        onClick={() => moveActivityPosition(index, 'up')}
-                        disabled={index === 0}
-                        className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 disabled:opacity-30"
-                        title="Move Up"
-                      >
-                        <ArrowUp className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => moveActivityPosition(index, 'down')}
-                        disabled={index === currentDayObj.activities.length - 1}
-                        className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 disabled:opacity-30"
-                        title="Move Down"
-                      >
-                        <ArrowDown className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => onDeleteActivity(selectedDay, item._id)}
-                        className="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-500 transition"
-                        title="Delete Activity"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Title & Location */}
-                  <div>
-                    <h4 className="text-base font-bold text-slate-900 dark:text-white">
-                      {item.activity}
-                    </h4>
-                    {item.location && (
-                      <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
-                        <MapPin className="w-3.5 h-3.5 text-secondary-500" />
-                        {item.location}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Metrics Footer (Cost, Distance, Travel Time) */}
-                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-4 text-slate-600 dark:text-slate-400">
-                      <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                        <DollarSign className="w-3.5 h-3.5" />
-                        ₹{(item.estimatedCost || 0).toLocaleString()}
-                      </span>
-                      <span className="flex items-center gap-1 text-[11px]">
-                        <Navigation className="w-3 h-3 text-sky-500" />
-                        Next Transit: {item.transportModeToNext || 'Taxi'} ({item.transportDurationMinutes || 15} mins)
-                      </span>
+                    {/* Title & Location */}
+                    <div>
+                      <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                        {item.activity}
+                      </h4>
+                      {item.location && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3.5 h-3.5 text-secondary-500" />
+                          {item.location}
+                        </p>
+                      )}
                     </div>
 
-                    {item.notes && (
-                      <span className="text-[11px] text-slate-400 italic">
-                        Note: {item.notes}
-                      </span>
-                    )}
+                    {/* Metrics Footer (Cost, Distance, Travel Time) */}
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-4 text-slate-600 dark:text-slate-400">
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                          <DollarSign className="w-3.5 h-3.5" />
+                          ₹{(item.estimatedCost || 0).toLocaleString()}
+                        </span>
+                        <span className="flex items-center gap-1 text-[11px]">
+                          <Navigation className="w-3 h-3 text-sky-500" />
+                          Next Transit: {item.transportModeToNext || 'Taxi'} ({item.transportDurationMinutes || 15} mins)
+                        </span>
+                      </div>
+
+                      {item.notes && (
+                        <span className="text-[11px] text-slate-400 italic">
+                          Note: {item.notes}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </Card>
               </div>

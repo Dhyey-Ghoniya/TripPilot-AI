@@ -184,14 +184,17 @@ class AiExtractorService {
       params.durationDays = 7;
     }
 
-    // Travelers
-    const travelerMatch =
-      text.match(/for\s*(\d+)\s*(people|person|travelers|pax|adults)?/i) ||
-      text.match(/(\d+)\s*(people|person|travelers|pax|adults)/i);
+    // Travelers (Strict parsing so budgets like 50000 are NEVER parsed as travelers)
+    const explicitPaxMatch = text.match(/(\d+)\s*(people|person|travelers|pax|adults|guests)/i) || text.match(/for\s*(\d+)\s*(people|person|travelers|pax|adults|guests)/i);
+    const genericForPaxMatch = text.match(/for\s*(\d+)\b(?![\d,]*\s*(?:k|lakh|lac|l|inr|rs|₹|usd|\$|per|budget))/i);
     const wordPaxMatch = text.match(/for\s*(one|two|three|four|five)\s*(people|person|travelers|pax|adults)?/i);
 
-    if (travelerMatch) {
-      params.travelersCount = parseInt(travelerMatch[1], 10);
+    if (explicitPaxMatch) {
+      const cnt = parseInt(explicitPaxMatch[1], 10);
+      if (cnt <= 50) params.travelersCount = cnt;
+    } else if (genericForPaxMatch) {
+      const cnt = parseInt(genericForPaxMatch[1], 10);
+      if (cnt <= 50) params.travelersCount = cnt;
     } else if (wordPaxMatch) {
       params.travelersCount = wordDayMap[wordPaxMatch[1].toLowerCase()];
     } else if (lowerText.includes('solo') || lowerText.includes('myself')) {
@@ -203,6 +206,10 @@ class AiExtractorService {
     } else if (lowerText.includes('family')) {
       params.travelersCount = params.travelersCount || 4;
       params.travelersType = 'family';
+    }
+
+    if (params.travelersCount && params.travelersCount > 50) {
+      params.travelersCount = 2; // Default fallback if larger number leaked
     }
 
     if (params.travelersCount === 1) params.travelersType = 'solo';
@@ -218,7 +225,7 @@ class AiExtractorService {
     // Destination Extraction
     let extractedDest = '';
     const roadTripMatch = text.match(/road\s+trip\s+from\s+[A-Za-z\s,\-\']+\s+to\s+([A-Za-z\s,\-\']+?)(?=\s+for|\s+under|\s+with|\.|$)/i);
-    const planTripToMatch = text.match(/(?:plan|create|build|make)\s+(?:a\s+)?(?:\d+-day\s+)?(?:trip|honeymoon|vacation|getaway|itinerary)?\s+(?:to|in)\s+([A-Za-z\s,\-\']+?)(?=\s+from|\s+for|\s+under|\s+with|\.|$)/i);
+    const planTripToMatch = text.match(/(?:plan|create|build|make)\s+(?:a\s+)?(?:\d+-day\s+)?(?:trip|honeymoon|vacation|getaway|itinerary)?\s*(?:to|in)?\s*([A-Za-z\s,\-\']+?)(?=\s+from|\s+for|\s+under|\s+with|\.|$)/i);
     const visitMatch = text.match(/(?:want\s+to\s+visit|want\s+to\s+explore|visit|explore)\s+([A-Za-z\s,\-\']+?)(?=\s+from|\s+for|\s+under|\s+in|\.|$)/i);
     const genericToMatch = text.match(/\bto\s+([A-Za-z\s,\-\']+?)(?=\s+from|\s+for|\s+under|\s+with|\s+in|\.|$)/i);
 
@@ -229,7 +236,8 @@ class AiExtractorService {
 
     if (extractedDest) {
       extractedDest = extractedDest
-        .replace(/\b(for|from|under|with|days|day|trip|in|a|the|people|person|pax|lakh|budget)\b/gi, '')
+        .replace(/\b(plan|\d+\s*days|days|day|trip|in|to|a|the|people|person|pax|lakh|budget)\b/gi, '')
+        .replace(/[\d\.]+/g, '')
         .replace(/,$/g, '')
         .trim();
       if (extractedDest.length >= 2) {

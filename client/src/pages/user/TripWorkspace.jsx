@@ -28,6 +28,7 @@ import TripIntelligence from '../../components/workspace/TripIntelligence';
 import AiTripAssistant from '../../components/workspace/AiTripAssistant';
 import BudgetView from '../../components/workspace/BudgetView';
 import MapView from '../../components/workspace/MapView';
+import TripHeader from '../../components/workspace/TripHeader';
 
 import tripService from '../../services/tripService';
 import itineraryService from '../../services/itineraryService';
@@ -180,53 +181,16 @@ const TripWorkspace = () => {
 
   return (
     <div className="space-y-6 pb-20">
-      {/* Top Workspace Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Link to="/my-trips" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition">
-              <ArrowLeft className="w-4 h-4" />
-            </Link>
-            <Badge variant="accent" size="sm">
-              {trip.status?.toUpperCase() || 'PLANNING'}
-            </Badge>
-            <span className="text-xs text-slate-400">Code: {trip.shareSettings?.shareCode || 'TPS-882'}</span>
-          </div>
-          <h1 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-            {trip.title}
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
-            <MapPin className="w-3.5 h-3.5 text-secondary-500" />
-            <span>{destName}</span>
-            <span>·</span>
-            <Calendar className="w-3.5 h-3.5 text-secondary-500" />
-            <span>{duration} Days Journey</span>
-          </p>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            icon={Share2}
-            onClick={() => {
-              navigator.clipboard.writeText(window.location.href);
-              addToast('Workspace link copied to clipboard!', 'success');
-            }}
-          >
-            Share Blueprint
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            icon={Bot}
-            onClick={() => setActiveTab('ai_assistant')}
-          >
-            Ask Copilot
-          </Button>
-        </div>
-      </div>
+      {/* Top Workspace Complete Trip Header */}
+      <TripHeader
+        trip={trip}
+        itinerary={itinerary}
+        onBookFlights={() => setActiveTab('flights')}
+        onShareTrip={() => {
+          navigator.clipboard.writeText(window.location.href);
+          addToast('Trip blueprint link copied to clipboard!', 'success');
+        }}
+      />
 
       {/* Navigation Tabs Bar */}
       <Tabs tabs={workspaceTabs} activeTab={activeTab} onChange={setActiveTab} />

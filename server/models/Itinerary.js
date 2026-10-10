@@ -15,6 +15,7 @@ const ItineraryActivitySchema = new mongoose.Schema(
     transportModeToNext: { type: String, default: 'Walking' }, // Taxi, Walking, Metro, Bus
     transportDurationMinutes: { type: Number, default: 15 },
     notes: { type: String, default: '' },
+    imageUrl: { type: String, default: '' },
     isCompleted: { type: Boolean, default: false },
     activityId: { type: mongoose.Schema.Types.ObjectId, ref: 'Activity' },
   },

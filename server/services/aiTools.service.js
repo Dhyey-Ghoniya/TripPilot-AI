@@ -5,6 +5,7 @@ const activityService = require('./activity.service');
 const weatherService = require('./weather.service');
 const mapService = require('./map.service');
 const financeService = require('./finance.service');
+const imageService = require('./image.service');
 const Trip = require('../models/Trip');
 const Itinerary = require('../models/Itinerary');
 
@@ -441,8 +442,11 @@ class AiToolsService {
       });
     }
 
-    // Validation pass: Verify NO DUPLICATES in activity titles across all days
+    // Validation pass: Verify NO DUPLICATES in activity titles & assign authentic photos in parallel
     const validatedTitles = new Set();
+    const usedImageUrls = new Set();
+
+    // 1. Deduplicate activity titles
     days.forEach((day) => {
       day.activities.forEach((act) => {
         if (validatedTitles.has(act.activity)) {
@@ -451,6 +455,31 @@ class AiToolsService {
         validatedTitles.add(act.activity);
       });
     });
+
+    // 2. Fetch photos in parallel across day lead activities
+    await Promise.all(
+      days.map(async (day, dIdx) => {
+        const leadAct = day.activities[0];
+        if (leadAct) {
+          let photo = await imageService.fetchPhoto(leadAct.activity, destName, dIdx);
+          if (usedImageUrls.has(photo)) {
+            photo = imageService.getFallbackPhoto(destName, dIdx + 1);
+          }
+          usedImageUrls.add(photo);
+          leadAct.imageUrl = photo;
+        }
+
+        // Fast fallback rotation for secondary activities
+        day.activities.slice(1).forEach((act, aIdx) => {
+          let actPhoto = imageService.getFallbackPhoto(destName, dIdx * 4 + aIdx + 1);
+          if (usedImageUrls.has(actPhoto)) {
+            actPhoto = imageService.getFallbackPhoto(destName, dIdx * 4 + aIdx + 2);
+          }
+          usedImageUrls.add(actPhoto);
+          act.imageUrl = actPhoto;
+        });
+      })
+    );
 
     const itinerary = new Itinerary({
       tripId,

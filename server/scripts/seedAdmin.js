@@ -11,17 +11,21 @@ const seedAdmin = async () => {
     const adminEmail = (process.env.ADMIN_EMAIL || 'admin@trippilot.ai').toLowerCase().trim();
     const adminPassword = process.env.ADMIN_PASSWORD || 'AdminPass@123';
 
-    const existingAdmin = await User.findOne({ email: adminEmail });
-    if (existingAdmin) {
-      console.log(`[Seed] Admin user already exists: ${adminEmail}`);
+    let adminUser = await User.findOne({ email: adminEmail });
+    if (adminUser) {
+      adminUser.password = adminPassword;
+      adminUser.role = 'ADMIN';
+      adminUser.isActive = true;
+      await adminUser.save();
+      console.log(`[Seed] Success! Existing admin password updated for: ${adminEmail}`);
       process.exit(0);
     }
 
-    const adminUser = new User({
+    adminUser = new User({
       firstName: 'TripPilot',
       lastName: 'Administrator',
       email: adminEmail,
-      password: adminPassword, // Pre-save hook will hash
+      password: adminPassword,
       role: 'ADMIN',
       isActive: true,
       isEmailVerified: true,

@@ -28,6 +28,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import aiService from '../../services/aiService';
 import tripService from '../../services/tripService';
+import { cleanDestinationName, getAuthenticActivityImage } from '../../utils/activityImageResolver';
 
 const PRESET_PROMPTS = [
   'Plan a 5-day trip to Dubai from Ahmedabad for 2 people.',
@@ -136,15 +137,54 @@ const AiPlanner = () => {
     }
   };
 
-  const handleSaveOrViewTrip = async () => {
-    if (!generatedTrip) return;
+  const handleSaveOrViewTrip = () => {
+    const targetId = generatedTrip?._id;
 
     if (isAuthenticated) {
-      navigate('/my-trips');
+      if (targetId) {
+        addToast('Opening full trip workspace! ✈️', 'success');
+        navigate(`/trips/${targetId}`);
+      } else {
+        navigate('/my-trips');
+      }
     } else {
-      addToast('Sign in to permanently save and edit this trip blueprint!', 'info');
-      navigate('/login?redirect=/my-trips');
+      if (targetId) {
+        localStorage.setItem('pending_trip_id', targetId);
+        addToast('Please sign in to save & customize your trip blueprint! 🔑', 'info');
+        navigate('/login', { state: { from: { pathname: `/trips/${targetId}` } } });
+      } else {
+        navigate('/login');
+      }
     }
+  };
+
+  const getActivityImage = (act, day) => {
+    if (act?.imageUrl) return act.imageUrl;
+    const title = (act?.activity || act?.title || day?.theme || '').toLowerCase();
+
+    if (title.includes('palace') || title.includes('fort') || title.includes('heritage')) {
+      return 'https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=600&q=80';
+    }
+    if (title.includes('garden') || title.includes('nature') || title.includes('park') || title.includes('botanical')) {
+      return 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80';
+    }
+    if (title.includes('food') || title.includes('culinary') || title.includes('thali') || title.includes('lunch') || title.includes('dinner')) {
+      return 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80';
+    }
+    if (title.includes('market') || title.includes('bazaar') || title.includes('shopping') || title.includes('craft')) {
+      return 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=600&q=80';
+    }
+    if (title.includes('cocktail') || title.includes('rooftop') || title.includes('music') || title.includes('night')) {
+      return 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80';
+    }
+    if (title.includes('journey') || title.includes('outbound') || title.includes('return') || title.includes('departure') || title.includes('flight')) {
+      return 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=600&q=80';
+    }
+    if (title.includes('museum') || title.includes('art') || title.includes('gallery') || title.includes('science')) {
+      return 'https://images.unsplash.com/photo-1566127444979-b3d2b654e3d7?auto=format&fit=crop&w=600&q=80';
+    }
+
+    return 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=600&q=80';
   };
 
   return (
@@ -397,43 +437,73 @@ const AiPlanner = () => {
                 </p>
               </div>
 
-              {/* Itinerary Days Breakdown */}
+              {/* Itinerary Days Breakdown with Authentic Activity Photos */}
               {generatedItinerary && (
-                <div className="space-y-2 pt-2">
-                  <span className="text-xs font-bold text-slate-300 block">
-                    Day-by-Day Itinerary Preview:
+                <div className="space-y-3 pt-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-300 block">
+                    Day-by-Day Itinerary Blueprint:
                   </span>
-                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                    {generatedItinerary.days?.map((day) => (
-                      <div
-                        key={day.dayNumber}
-                        className="p-3 rounded-xl bg-slate-800/60 border border-slate-700/60 space-y-1.5"
-                      >
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-bold text-secondary-400">
-                            Day {day.dayNumber}: {day.theme}
-                          </span>
-                          <span className="text-[10px] text-emerald-400 font-semibold">
-                            ₹{day.estimatedDayCost?.toLocaleString() || '1,500'}
-                          </span>
+                  <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                    {generatedItinerary.days?.map((day) => {
+                      const firstAct = day.activities?.[0] || {};
+                      const destRaw = generatedTrip.destinations?.[0]?.name || generatedTrip.destination?.name || 'Bangalore';
+                      const cleanDest = cleanDestinationName(destRaw);
+                      const actImg = getAuthenticActivityImage(firstAct, day, day.dayNumber, cleanDest);
+
+                      const cleanTheme = (day.theme || `Day ${day.dayNumber}`).replace(/Plan \d+ days in/gi, '').trim();
+                      const cleanActivity = (firstAct.activity || day.summary || 'Explore regional landmarks & local dining').replace(/Plan \d+ days in/gi, '').trim();
+                      const cleanLocation = cleanDestinationName(firstAct.location || cleanDest);
+
+                      return (
+                        <div
+                          key={day.dayNumber}
+                          className="rounded-2xl bg-slate-800/80 border border-slate-700/80 overflow-hidden shadow-lg space-y-0 flex flex-col sm:flex-row"
+                        >
+                          <img
+                            src={actImg}
+                            alt={cleanTheme}
+                            className="w-full sm:w-36 h-32 sm:h-auto object-cover shrink-0"
+                          />
+                          <div className="p-3.5 flex-1 space-y-2">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-bold text-secondary-400">
+                                Day {day.dayNumber}: {cleanTheme}
+                              </span>
+                              <span className="text-[11px] text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-800/50">
+                                ₹{day.estimatedDayCost?.toLocaleString() || '1,500'}
+                              </span>
+                            </div>
+
+                            <p className="text-[11px] text-slate-200 font-medium leading-relaxed">
+                              {cleanActivity}
+                            </p>
+
+                            <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                              <span className="px-2 py-0.5 rounded-full bg-slate-700/80 text-slate-300 font-semibold flex items-center gap-1">
+                                📍 {cleanLocation}
+                              </span>
+                              {firstAct.transportModeToNext && (
+                                <span className="px-2 py-0.5 rounded-full bg-secondary-900/60 text-secondary-300 font-semibold border border-secondary-700/50">
+                                  🚗 {firstAct.transportModeToNext}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <p className="text-[11px] text-slate-300 leading-normal">
-                          {day.activities?.[0]?.activity || 'Sightseeing exploration'}
-                        </p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
               <Button
                 variant="accent"
-                size="md"
+                size="lg"
                 icon={Eye}
                 onClick={handleSaveOrViewTrip}
-                className="w-full"
+                className="w-full bg-gradient-to-r from-secondary-600 to-amber-600 hover:from-secondary-500 hover:to-amber-500 text-white font-black text-sm shadow-xl"
               >
-                {isAuthenticated ? 'View Saved Trip in My Trips' : 'Sign In to Save Blueprint'}
+                {isAuthenticated ? 'Open Full Trip Workspace ➔' : 'Sign In to Save Blueprint ➔'}
               </Button>
             </Card>
           ) : (

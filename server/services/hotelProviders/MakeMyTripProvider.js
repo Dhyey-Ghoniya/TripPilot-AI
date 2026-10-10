@@ -58,6 +58,30 @@ class MakeMyTripProvider extends BaseHotelProvider {
         distanceToCenterKm: 1.0,
         vibeScore: 90,
       },
+      {
+        hotelId: `mmt-${destLower.replace(/[^a-z0-9]/g, '')}-3`,
+        name: `MMT Express ${dest} Central Inn`,
+        address: `Station Road Promenade, ${dest}`,
+        neighborhood: 'Transit Central',
+        coordinates: { lat: 25.210, lng: 55.275 },
+        starRating: 3,
+        userRating: 4.3,
+        reviewsCount: 650,
+        pricePerNight: {
+          amount: 2800,
+          currency: searchParams.currency || 'INR',
+        },
+        totalEstimate: 2800 * (searchParams.nights || 3),
+        images: ['https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1000&q=80'],
+        coverImage: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1000&q=80',
+        amenities: ['wifi', 'breakfast', 'ac', '24h_desk'],
+        accommodationType: 'Hotel',
+        providerName: this.name,
+        providerCode: this.code,
+        providerLogo: this.logoUrl,
+        distanceToCenterKm: 0.8,
+        vibeScore: 88,
+      },
     ];
   }
 
