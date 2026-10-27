@@ -79,7 +79,7 @@ const AdminDashboard = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-amber-400 font-bold text-xs uppercase tracking-wider">
             <ShieldAlert className="w-4 h-4" />
-            <span>Administrative Control Center — Module 15</span>
+            <span>Administrative Control Center: Administration Hub</span>
           </div>
           <Badge variant="accent" size="sm">Admin Authorized</Badge>
         </div>
@@ -159,7 +159,7 @@ const AdminDashboard = () => {
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
             <Activity className="w-5 h-5 text-amber-500" />
-            Integration Dashboard — External Providers
+            Integration Dashboard: External Providers
           </h2>
           <Link to="/admin/providers">
             <Button variant="outline" size="sm" icon={ArrowRight}>
@@ -220,7 +220,7 @@ const AdminDashboard = () => {
 
           <Link to="/admin/collections">
             <Card className="p-6 space-y-3 hover:border-amber-500/50 transition group">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center font-bold">
+              <div className="w-10 h-10 rounded-xl bg-secondary-500/10 text-secondary-600 flex items-center justify-center font-bold">
                 <Layers className="w-5 h-5" />
               </div>
               <h3 className="font-bold text-base text-slate-900 dark:text-white group-hover:text-amber-500 transition">

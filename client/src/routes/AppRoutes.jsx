@@ -23,7 +23,10 @@ import DestinationDetails from '../pages/public/DestinationDetails';
 import AttractionsExplorer from '../pages/public/AttractionsExplorer';
 import AttractionDetails from '../pages/public/AttractionDetails';
 import AiPlanner from '../pages/public/AiPlanner';
+import PrivacyPolicy from '../pages/public/PrivacyPolicy';
+import TermsAndConditions from '../pages/public/TermsAndConditions';
 import NotFound from '../pages/public/NotFound';
+import SharedTrip from '../pages/public/SharedTrip';
 
 // User / Planner Pages
 import UserDashboard from '../pages/user/UserDashboard';
@@ -66,6 +69,9 @@ const AppRoutes = () => {
         <Route path="/destinations/:slug" element={<DestinationDetails />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsAndConditions />} />
+        <Route path="/share/trip/:shareCode" element={<SharedTrip />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="*" element={<NotFound />} />

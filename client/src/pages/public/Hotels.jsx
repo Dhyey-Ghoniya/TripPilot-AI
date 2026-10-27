@@ -24,10 +24,25 @@ import Select from '../../components/ui/Select';
 import Badge from '../../components/ui/Badge';
 import hotelService from '../../services/hotelService';
 
+const toDateInputValue = (date) => date.toISOString().split('T')[0];
+const getDefaultStayDates = () => {
+  const checkInDate = new Date();
+  checkInDate.setHours(0, 0, 0, 0);
+  checkInDate.setDate(checkInDate.getDate() + 7);
+  const checkOutDate = new Date(checkInDate);
+  checkOutDate.setDate(checkOutDate.getDate() + 4);
+  return {
+    checkIn: toDateInputValue(checkInDate),
+    checkOut: toDateInputValue(checkOutDate),
+    minDate: toDateInputValue(new Date()),
+  };
+};
+
 const Hotels = () => {
+  const defaultStayDates = getDefaultStayDates();
   const [destination, setDestination] = useState('Dubai');
-  const [checkIn, setCheckIn] = useState('2026-10-15');
-  const [checkOut, setCheckOut] = useState('2026-10-19');
+  const [checkIn, setCheckIn] = useState(defaultStayDates.checkIn);
+  const [checkOut, setCheckOut] = useState(defaultStayDates.checkOut);
   const [guests, setGuests] = useState('2');
   const [rooms, setRooms] = useState('1');
 
@@ -45,10 +60,12 @@ const Hotels = () => {
   const [loading, setLoading] = useState(false);
   const [hotels, setHotels] = useState([]);
   const [totalResults, setTotalResults] = useState(0);
+  const [searchError, setSearchError] = useState('');
 
   const handleSearch = async (overrideParams = {}) => {
     setLoading(true);
     setAiMessage('');
+    setSearchError('');
     try {
       const payload = {
         destination,
@@ -70,6 +87,9 @@ const Hotels = () => {
       }
     } catch (err) {
       console.error('Hotel search error:', err);
+      setHotels([]);
+      setTotalResults(0);
+      setSearchError(err.response?.data?.message || 'Hotel search is temporarily unavailable. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -78,6 +98,16 @@ const Hotels = () => {
   useEffect(() => {
     handleSearch();
   }, []);
+
+  const handleCheckInChange = (event) => {
+    const nextCheckIn = event.target.value;
+    setCheckIn(nextCheckIn);
+    if (checkOut <= nextCheckIn) {
+      const nextCheckOut = new Date(`${nextCheckIn}T00:00:00`);
+      nextCheckOut.setDate(nextCheckOut.getDate() + 1);
+      setCheckOut(toDateInputValue(nextCheckOut));
+    }
+  };
 
   const handleAiCommand = async (promptText) => {
     const query = promptText || aiPrompt;
@@ -99,32 +129,28 @@ const Hotels = () => {
       }
     } catch (err) {
       console.error('AI command error:', err);
+      setSearchError('Stay assistant is temporarily unavailable. Please use the hotel search form.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="space-y-12 pb-16">
+    <div className="page-shell space-y-10 pb-16 pt-8">
       {/* Header Banner */}
-      <section className="relative pt-12 pb-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-primary-950 via-primary-900 to-slate-900 text-white rounded-3xl shadow-xl overflow-hidden border border-slate-800">
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#14b8a6_1px,transparent_1px)] [background-size:16px_16px]" />
-
+      <section className="relative pt-10 pb-12 px-4 sm:px-8 bg-slate-950 text-white rounded-xl overflow-hidden border border-slate-800">
         <div className="relative z-10 max-w-5xl mx-auto text-center space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary-500/20 border border-secondary-400/30 text-secondary-300 text-xs font-semibold backdrop-blur-md">
+          <p className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-secondary-900/50 border border-secondary-700/40 text-secondary-200 text-xs font-semibold">
             <Sparkles className="w-3.5 h-3.5 text-secondary-400" />
-            <span>Multi-Provider Aggregator & Hotel Fit Intelligence</span>
-          </div>
+            Hotel search
+          </p>
 
-          <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white">
-            Curated Hotel Search, <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary-400 via-teal-300 to-amber-300">
-              Evaluated For Your Trip.
-            </span>
+          <h1 className="font-display text-3xl sm:text-5xl font-bold tracking-tight text-white">
+            Search stays by dates, guests, and nightly budget
           </h1>
 
-          <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto font-light leading-relaxed">
-            Search live across 6 providers (Booking.com, Agoda, MakeMyTrip, Trip.com, Expedia, Hotels.com). Evaluate hotel fit, airport proximity, itinerary day-distances, and transport impact.
+          <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto leading-relaxed">
+            Compare Booking.com, Agoda, MakeMyTrip, Trip.com, Expedia, and Hotels.com. Check rating, location, and estimated nightly rate before you book.
           </p>
 
           {/* AI Quick Copilot Command Bar */}
@@ -170,13 +196,15 @@ const Hotels = () => {
                 type="date"
                 icon={Calendar}
                 value={checkIn}
-                onChange={(e) => setCheckIn(e.target.value)}
+                min={defaultStayDates.minDate}
+                onChange={handleCheckInChange}
               />
               <Input
                 label="Check Out"
                 type="date"
                 icon={Calendar}
                 value={checkOut}
+                min={checkIn || defaultStayDates.minDate}
                 onChange={(e) => setCheckOut(e.target.value)}
               />
               <Select
@@ -306,6 +334,12 @@ const Hotels = () => {
             <Sparkles className="w-8 h-8 text-secondary-500 animate-spin mx-auto" />
             <p className="text-sm font-medium">Aggregating live provider matrix & evaluating Hotel Fit...</p>
           </div>
+        ) : searchError ? (
+          <Card className="p-12 text-center space-y-4">
+            <Building2 className="w-12 h-12 text-amber-500 mx-auto" />
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Hotel search unavailable</h3>
+            <p className="text-xs text-slate-500 max-w-md mx-auto">{searchError}</p>
+          </Card>
         ) : hotels.length === 0 ? (
           <Card className="p-12 text-center space-y-4">
             <Building2 className="w-12 h-12 text-slate-400 mx-auto" />
@@ -328,20 +362,20 @@ const Hotels = () => {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   <div className="absolute top-3 left-3 flex gap-2">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur-md text-emerald-400 font-bold text-xs shadow-md">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-slate-950/80 text-emerald-400 font-bold text-xs">
                       <Sparkles className="w-3.5 h-3.5 text-secondary-400" />
                       {hotel.hotelFit?.fitScore || hotel.vibeScore || 92}% Fit Score
                     </span>
                   </div>
                   <div className="absolute top-3 right-3 flex items-center gap-1.5">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500 text-slate-950 font-black text-xs shadow-md">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-500 text-slate-950 font-bold text-xs">
                       <Star className="w-3 h-3 fill-current" />
                       {hotel.starRating}★ ({hotel.userRating})
                     </span>
                   </div>
 
                   <div className="absolute bottom-3 left-3">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900/90 border border-slate-700 text-white font-semibold text-xs backdrop-blur-md">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-slate-900/90 border border-slate-700 text-white font-semibold text-xs">
                       {hotel.providerLogo && (
                         <img src={hotel.providerLogo} alt={hotel.providerName} className="w-4 h-4 object-contain rounded" />
                       )}

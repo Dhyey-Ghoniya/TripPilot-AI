@@ -49,7 +49,7 @@ const AdminSettings = () => {
     try {
       const res = await adminService.updateSystemConfig(config);
       if (res && res.success) {
-        showToast('System configuration saved successfully! ✨', 'success');
+        showToast('System configuration saved successfully.', 'success');
         setConfig(res.data);
       }
     } catch (err) {

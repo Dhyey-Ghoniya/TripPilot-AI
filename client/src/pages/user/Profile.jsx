@@ -125,7 +125,7 @@ const Profile = () => {
     try {
       const result = await updateProfile(formData);
       if (result.success) {
-        showToast('Personal profile updated successfully! ✈️', 'success');
+        showToast('Personal profile updated successfully.', 'success');
         setIsEditModalOpen(false);
       } else {
         showToast(result.message || 'Failed to update profile', 'error');
@@ -142,7 +142,7 @@ const Profile = () => {
     try {
       const result = await updateTravelPreferences(preferences);
       if (result.success) {
-        showToast('AI travel preferences updated! 🤖✨', 'success');
+        showToast('Travel preferences updated successfully.', 'success');
       } else {
         showToast(result.message || 'Failed to update travel preferences', 'error');
       }

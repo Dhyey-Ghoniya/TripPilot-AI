@@ -25,8 +25,8 @@ export const mapService = {
   /**
    * Get trip map workspace markers & routing telemetry
    */
-  getTripMapWorkspace: async (tripId, dayNumber = 1) => {
-    return await api.get(`/map/workspace/${tripId}`, { params: { dayNumber } });
+  getTripMapWorkspace: async (tripId, dayNumber = 1, mode) => {
+    return await api.get(`/map/workspace/${tripId}`, { params: { dayNumber, mode } });
   },
 
   /**

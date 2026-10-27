@@ -40,8 +40,8 @@ class MapController {
   async getTripMapWorkspace(req, res, next) {
     try {
       const { tripId } = req.params;
-      const { dayNumber } = req.query;
-      const data = await mapService.getTripMapWorkspace(tripId, dayNumber || 1);
+      const { dayNumber, mode } = req.query;
+      const data = await mapService.getTripMapWorkspace(tripId, dayNumber || 1, mode);
       return ApiResponse.success(res, data, 'Trip map workspace & route intelligence retrieved');
     } catch (error) {
       next(error);

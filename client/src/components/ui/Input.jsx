@@ -14,11 +14,11 @@ const Input = ({
   return (
     <div className="w-full">
       {label && (
-        <label htmlFor={inputId} className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
+        <label htmlFor={inputId} className="block text-xs font-semibold tracking-wide text-slate-600 dark:text-slate-400 mb-1.5">
           {label}
         </label>
       )}
-      <div className="relative rounded-xl shadow-sm">
+      <div className="relative rounded-lg">
         {Icon && (
           <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
             <Icon className="h-4 h-4" />
@@ -26,7 +26,7 @@ const Input = ({
         )}
         <input
           id={inputId}
-          className={`w-full rounded-xl border bg-white dark:bg-slate-800/90 text-slate-900 dark:text-slate-100 text-sm transition duration-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-secondary-500 ${
+          className={`w-full rounded-lg border bg-white dark:bg-slate-800/90 text-slate-900 dark:text-slate-100 text-sm transition duration-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-secondary-500 ${
             Icon ? 'pl-10' : 'px-4'
           } py-2.5 ${
             error

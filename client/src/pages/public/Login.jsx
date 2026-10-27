@@ -8,6 +8,7 @@ import { Mail, Lock, LogIn, Plane, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { getPendingTripSession } from '../../utils/pendingTripStorage';
+import { BrandMark } from '../../components/common/BrandLogo';
 
 const Login = () => {
   const { login } = useAuth();
@@ -36,15 +37,16 @@ const Login = () => {
     try {
       const result = await login(email, password);
       if (result.success) {
-        showToast(`Welcome back, ${result.user.firstName}! 👋`, 'success');
+        showToast(`Welcome back, ${result.user.firstName}.`, 'success');
         
         const pending = getPendingTripSession();
-        if (pending?.activeTrip?._id) {
-          showToast('Restored your pending trip context!', 'info');
-          navigate(`/trips/${pending.activeTrip._id}`, { replace: true });
-        } else if (pending?.chatLog?.length > 0) {
-          showToast('Restored your AI conversation context!', 'info');
-          navigate('/plan-trip', { replace: true });
+        if (pending) {
+          if (pending.chatLog?.length > 0 || pending.lastPrompt) {
+            showToast('Returning to your trip planner.', 'success');
+            navigate('/plan-trip', { replace: true });
+          } else {
+            navigate(from, { replace: true });
+          }
         } else {
           navigate(from, { replace: true });
         }
@@ -62,11 +64,11 @@ const Login = () => {
     <div className="max-w-md mx-auto px-4 py-16">
       <Card className="p-8 space-y-6">
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-primary-900 to-secondary-600 text-white flex items-center justify-center mx-auto shadow-md">
-            <Plane className="w-6 h-6" />
+          <div className="flex justify-center mb-1">
+            <BrandMark size={48} />
           </div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white">Welcome back 👋</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Sign in to continue your journey</p>
+          <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-white">Sign in</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Access saved trips, wishlist, and the planner workspace</p>
         </div>
 
         {errorMessage && (

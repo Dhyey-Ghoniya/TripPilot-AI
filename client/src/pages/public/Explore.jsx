@@ -116,40 +116,44 @@ const Explore = () => {
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* HERO EDITORIAL & AI DISCOVERY BAR                               */}
       {/* ═══════════════════════════════════════════════════════════════ */}
-      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-8 sm:p-12 text-white shadow-2xl space-y-6">
-        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#6366f1_1px,transparent_1px)] [background-size:16px_16px]" />
+      <div className="relative rounded-xl overflow-hidden bg-slate-950 p-8 sm:p-12 text-white border border-slate-800 space-y-6">
+        <img
+          src="https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1600&q=80"
+          alt="Travel map and camera on a table"
+          className="absolute inset-0 w-full h-full object-cover opacity-35"
+        />
+        <div className="absolute inset-0 bg-slate-950/70" />
 
         <div className="relative z-10 space-y-4 max-w-3xl">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-bold">
-            <Sparkles className="w-4 h-4 text-indigo-400 animate-pulse" />
-            <span>AI Travel Discovery Layer</span>
-          </div>
-
-          <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight">
-            Explore Beyond Boundaries
-          </h1>
-          <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-2xl">
-            Discover personalized destinations, curated travel collections, and top experiences powered by profile preferences, past trip memory, and AI budget optimization.
+          <p className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-secondary-900/70 border border-secondary-700/40 text-secondary-200 text-xs font-semibold">
+            <Sparkles className="w-4 h-4 text-secondary-400" />
+            Destination search
           </p>
 
-          {/* AI Search & Discovery Prompt Input */}
+          <h1 className="font-display text-3xl sm:text-5xl font-bold tracking-tight leading-tight text-white">
+            Browse destinations, collections, and experiences
+          </h1>
+          <p className="text-sm sm:text-base text-slate-200 leading-relaxed max-w-2xl">
+            Filter by region and budget, or ask for a match using days, price cap, and trip style.
+          </p>
+
           <div className="pt-2">
-            <div className="flex flex-col sm:flex-row gap-2 bg-white/10 backdrop-blur-md p-2 rounded-2xl border border-white/15 shadow-xl">
+            <div className="flex flex-col sm:flex-row gap-2 bg-white p-2 rounded-lg border border-slate-200">
               <div className="flex-1 flex items-center gap-2 px-3">
-                <Search className="w-5 h-5 text-indigo-300 shrink-0" />
+                <Search className="w-5 h-5 text-slate-400 shrink-0" />
                 <input
                   type="text"
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleRunAiDiscovery()}
-                  placeholder="Ask AI Copilot (e.g. 'Suggest a 4-day adventure trip under ₹30,000')..."
-                  className="w-full bg-transparent text-sm text-white placeholder-slate-400 focus:outline-none"
+                  placeholder="Example: Suggest a 4-day adventure trip under ₹30,000"
+                  className="w-full bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
                 />
               </div>
               <button
                 onClick={() => handleRunAiDiscovery()}
                 disabled={isAiLoading || !aiPrompt.trim()}
-                className="px-6 py-3 rounded-xl bg-gradient-to-r from-secondary-500 to-indigo-600 text-white text-xs font-bold hover:from-secondary-600 hover:to-indigo-700 transition shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2"
+                className="px-6 py-3 rounded-lg bg-secondary-600 hover:bg-secondary-700 text-white text-xs font-semibold transition-colors duration-200 flex items-center justify-center gap-2"
               >
                 {isAiLoading ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -165,7 +169,7 @@ const Explore = () => {
 
           {/* Prompt Presets */}
           <div className="flex items-center gap-2 flex-wrap pt-1">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Quick Discovery Prompts:</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-300">Quick prompts</span>
             {AI_PROMPT_PRESETS.map((prompt, idx) => (
               <button
                 key={idx}
@@ -173,7 +177,7 @@ const Explore = () => {
                   setAiPrompt(prompt);
                   handleRunAiDiscovery(prompt);
                 }}
-                className="px-3 py-1 rounded-full bg-white/5 hover:bg-white/15 text-[11px] font-semibold text-slate-300 border border-white/10 transition"
+                className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-[11px] font-semibold text-slate-300 border border-white/10 transition"
               >
                 {prompt}
               </button>
@@ -221,7 +225,7 @@ const Explore = () => {
         <Card className="p-6 border border-slate-200 dark:border-slate-800 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <MapIcon className="w-5 h-5 text-indigo-500" />
+              <MapIcon className="w-5 h-5 text-secondary-600" />
               <h3 className="text-base font-bold text-slate-900 dark:text-white">Interactive Global Discovery Map</h3>
             </div>
             <Badge variant="secondary" size="sm">
@@ -230,8 +234,8 @@ const Explore = () => {
           </div>
 
           <div className="relative h-[480px] rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 flex flex-col items-center justify-center p-6 text-center space-y-4">
-            <div className="w-16 h-16 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
-              <Compass className="w-8 h-8 animate-spin" style={{ animationDuration: '12s' }} />
+            <div className="w-16 h-16 rounded-xl bg-secondary-500/10 text-secondary-400 flex items-center justify-center">
+              <Compass className="w-8 h-8" />
             </div>
             <div className="space-y-1 max-w-md">
               <h4 className="text-lg font-bold text-white">Interactive Destination Radar</h4>
@@ -295,7 +299,7 @@ const Explore = () => {
 
                       {/* Personalization Match Badge */}
                       <div className="absolute top-3 left-3">
-                        <span className="px-2.5 py-1 rounded-full bg-emerald-500/90 text-white text-[10px] font-black uppercase tracking-wider backdrop-blur-md shadow-md">
+                        <span className="px-2.5 py-1 rounded-md bg-emerald-600 text-white text-[10px] font-bold uppercase tracking-wider">
                           {dest.matchScore}% Match
                         </span>
                       </div>
@@ -303,7 +307,7 @@ const Explore = () => {
                       {/* Wishlist Button */}
                       <button
                         onClick={() => toggleWishlist(id)}
-                        className="absolute top-3 right-3 p-2 rounded-full bg-slate-900/60 text-white hover:bg-slate-900 transition backdrop-blur-sm"
+                        className="absolute top-3 right-3 p-2 rounded-lg bg-slate-900/60 text-white hover:bg-slate-900 transition-colors duration-200"
                       >
                         <Heart className={`w-4 h-4 ${isSaved(id) ? 'fill-rose-500 text-rose-500' : ''}`} />
                       </button>
@@ -353,11 +357,11 @@ const Explore = () => {
           <div className="space-y-6">
             <div className="border-b border-slate-200 dark:border-slate-800 pb-4">
               <div className="flex items-center gap-2">
-                <Compass className="w-5 h-5 text-purple-500" />
+                <Compass className="w-5 h-5 text-secondary-600 dark:text-secondary-400" />
                 <h2 className="text-2xl font-black text-slate-900 dark:text-white">AI Discoveries</h2>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Natural language travel discovery — trigger instant AI destination & trip recommendation synthesis
+                Natural language travel discovery: explore destinations and curated trip suggestions
               </p>
             </div>
 
@@ -365,12 +369,12 @@ const Explore = () => {
               {aiDiscoveries.map((disc) => (
                 <Card
                   key={disc.id}
-                  className="p-6 border border-purple-200/60 dark:border-purple-900/30 hover:border-purple-400 transition-all duration-300 flex flex-col justify-between space-y-4 bg-gradient-to-br from-white to-purple-50/30 dark:from-slate-900 dark:to-purple-950/20 group"
+                  className="p-6 border border-slate-200 dark:border-slate-800 hover:border-secondary-500/50 transition-all duration-300 flex flex-col justify-between space-y-4 bg-white dark:bg-slate-900 group"
                 >
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Badge variant="accent" size="xs">{disc.badge}</Badge>
-                      <Sparkles className="w-4 h-4 text-purple-500 group-hover:rotate-12 transition-transform" />
+                      <Sparkles className="w-4 h-4 text-secondary-500 group-hover:rotate-12 transition-transform" />
                     </div>
                     <h3 className="text-base font-bold text-slate-900 dark:text-white">{disc.title}</h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{disc.description}</p>
@@ -382,7 +386,7 @@ const Explore = () => {
                         setAiPrompt(disc.prompt);
                         handleRunAiDiscovery(disc.prompt);
                       }}
-                      className="w-full py-2.5 px-4 rounded-xl bg-purple-500/10 hover:bg-purple-500 text-purple-600 dark:text-purple-400 hover:text-white text-xs font-bold transition flex items-center justify-between"
+                      className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-secondary-600 dark:bg-slate-800 dark:hover:bg-secondary-600 text-slate-700 dark:text-slate-200 hover:text-white text-xs font-bold transition flex items-center justify-between"
                     >
                       <span>Run Discovery</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -399,7 +403,7 @@ const Explore = () => {
           <div className="space-y-6">
             <div className="border-b border-slate-200 dark:border-slate-800 pb-4">
               <div className="flex items-center gap-2">
-                <Layers className="w-5 h-5 text-indigo-500" />
+                <Layers className="w-5 h-5 text-secondary-600" />
                 <h2 className="text-2xl font-black text-slate-900 dark:text-white">Travel Collections</h2>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -422,13 +426,13 @@ const Explore = () => {
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
 
                   <div className="absolute top-4 left-4">
-                    <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider border border-white/20">
+                    <span className="px-3 py-1 rounded-md bg-white/20 text-white text-[10px] font-bold uppercase tracking-wider border border-white/20">
                       {coll.tag}
                     </span>
                   </div>
 
                   <div className="absolute bottom-6 left-6 right-6 text-white space-y-1">
-                    <span className="text-xs font-semibold text-indigo-300 block">{coll.destinationCount} Destinations</span>
+                    <span className="text-xs font-semibold text-secondary-200 block">{coll.destinationCount} Destinations</span>
                     <h3 className="text-xl font-black">{coll.title}</h3>
                     <p className="text-xs text-slate-300 line-clamp-1">{coll.subtitle}</p>
                   </div>
@@ -456,7 +460,7 @@ const Explore = () => {
                 <Card key={exp.id} className="overflow-hidden border border-slate-200 dark:border-slate-800 space-y-3 flex flex-col justify-between">
                   <div className="relative h-40 overflow-hidden bg-slate-100 dark:bg-slate-800">
                     <img src={exp.coverImage} alt={exp.title} className="w-full h-full object-cover" />
-                    <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-slate-900/80 text-white text-[10px] font-bold flex items-center gap-1">
+                    <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-slate-900/80 text-white text-[10px] font-bold flex items-center gap-1">
                       <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
                       <span>{exp.rating}</span>
                     </div>
@@ -539,14 +543,14 @@ const Explore = () => {
         <div className="space-y-5 py-2">
           {isAiLoading ? (
             <div className="p-12 flex flex-col items-center justify-center space-y-3">
-              <div className="w-10 h-10 border-3 border-purple-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-10 h-10 border-3 border-secondary-500 border-t-transparent rounded-full animate-spin" />
               <span className="text-xs text-slate-400 font-semibold">Synthesizing personalized AI recommendations...</span>
             </div>
           ) : aiResult ? (
             <div className="space-y-4">
-              <div className="p-4 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-xs space-y-1">
-                <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">Discovery Response</span>
-                <p className="font-semibold text-purple-900 dark:text-purple-200 text-sm">{aiResult.message}</p>
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs space-y-1">
+                <span className="text-[10px] font-bold text-secondary-600 dark:text-secondary-400 uppercase tracking-wider">Discovery Response</span>
+                <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm">{aiResult.message}</p>
               </div>
 
               {/* Discovery Results */}

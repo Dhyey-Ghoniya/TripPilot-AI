@@ -27,6 +27,11 @@ import {
   Banknote,
   Smartphone,
   ShoppingBag,
+  Plane,
+  Building2,
+  Utensils,
+  Compass,
+  Car,
 } from 'lucide-react';
 import Card from '../common/Card';
 import Badge from '../ui/Badge';
@@ -39,13 +44,13 @@ import budgetService from '../../services/budgetService';
 const CATEGORIES = ['Flights', 'Hotels', 'Food', 'Activities', 'Transport', 'Shopping', 'Miscellaneous'];
 
 const CATEGORY_CONFIG = {
-  Flights: { color: '#0ea5e9', bg: 'bg-sky-500', bgLight: 'bg-sky-500/10', text: 'text-sky-600 dark:text-sky-400', icon: '✈️' },
-  Hotels: { color: '#f59e0b', bg: 'bg-amber-500', bgLight: 'bg-amber-500/10', text: 'text-amber-600 dark:text-amber-400', icon: '🏨' },
-  Food: { color: '#f43f5e', bg: 'bg-rose-500', bgLight: 'bg-rose-500/10', text: 'text-rose-600 dark:text-rose-400', icon: '🍽️' },
-  Activities: { color: '#10b981', bg: 'bg-emerald-500', bgLight: 'bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', icon: '🎯' },
-  Transport: { color: '#6366f1', bg: 'bg-indigo-500', bgLight: 'bg-indigo-500/10', text: 'text-indigo-600 dark:text-indigo-400', icon: '🚕' },
-  Shopping: { color: '#a855f7', bg: 'bg-purple-500', bgLight: 'bg-purple-500/10', text: 'text-purple-600 dark:text-purple-400', icon: '🛍️' },
-  Miscellaneous: { color: '#64748b', bg: 'bg-slate-500', bgLight: 'bg-slate-500/10', text: 'text-slate-600 dark:text-slate-400', icon: '📦' },
+  Flights: { color: '#0ea5e9', bg: 'bg-sky-500', bgLight: 'bg-sky-500/10', text: 'text-sky-600 dark:text-sky-400', icon: Plane },
+  Hotels: { color: '#f59e0b', bg: 'bg-amber-500', bgLight: 'bg-amber-500/10', text: 'text-amber-600 dark:text-amber-400', icon: Building2 },
+  Food: { color: '#f43f5e', bg: 'bg-rose-500', bgLight: 'bg-rose-500/10', text: 'text-rose-600 dark:text-rose-400', icon: Utensils },
+  Activities: { color: '#10b981', bg: 'bg-emerald-500', bgLight: 'bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', icon: Compass },
+  Transport: { color: '#0f766e', bg: 'bg-teal-600', bgLight: 'bg-teal-500/10', text: 'text-teal-700 dark:text-teal-400', icon: Car },
+  Shopping: { color: '#0d9488', bg: 'bg-teal-500', bgLight: 'bg-teal-500/10', text: 'text-teal-600 dark:text-teal-400', icon: ShoppingBag },
+  Miscellaneous: { color: '#64748b', bg: 'bg-slate-500', bgLight: 'bg-slate-500/10', text: 'text-slate-600 dark:text-slate-400', icon: Receipt },
 };
 
 const COST_TYPES = [
@@ -582,7 +587,10 @@ const BudgetView = ({ trip, itinerary }) => {
                     <div key={cat} className="group">
                       <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm">{CATEGORY_CONFIG[cat].icon}</span>
+                          {(() => {
+                            const CatIcon = CATEGORY_CONFIG[cat]?.icon || Receipt;
+                            return <CatIcon className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />;
+                          })()}
                           <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{cat}</span>
                         </div>
                         <div className="flex items-center gap-3 text-[10px]">
@@ -801,13 +809,13 @@ const BudgetView = ({ trip, itinerary }) => {
       {/* ═══════════════════════════════════════════════════════════════ */}
       {activeSection === 'ai' && (
         <div className="space-y-5 max-w-2xl mx-auto">
-          <Card className="p-6 border border-purple-200/60 dark:border-purple-800/30 space-y-5">
+          <Card className="p-6 border border-slate-200 dark:border-slate-800 space-y-5">
             <div className="text-center space-y-1">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center justify-center gap-2">
-                <Sparkles className="w-5 h-5 text-purple-500" />
-                AI Budget Copilot
+                <Sparkles className="w-5 h-5 text-secondary-600 dark:text-secondary-400" />
+                Budget Optimization Assistant
               </h3>
-              <p className="text-xs text-slate-400">Ask the AI to optimize your budget, find savings, or analyze spending.</p>
+              <p className="text-xs text-slate-400">Request automated budget adjustments, savings opportunities, or spending reviews.</p>
             </div>
 
             {/* Quick Commands */}
@@ -823,7 +831,7 @@ const BudgetView = ({ trip, itinerary }) => {
                 <button
                   key={cmd}
                   onClick={() => setAiCommand(cmd)}
-                  className="px-3 py-1.5 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 text-[10px] font-bold hover:bg-purple-100 dark:hover:bg-purple-900/30 transition border border-purple-200/40 dark:border-purple-700/40"
+                  className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition border border-slate-200/80 dark:border-slate-700"
                 >
                   {cmd}
                 </button>
@@ -838,12 +846,12 @@ const BudgetView = ({ trip, itinerary }) => {
                 onChange={(e) => setAiCommand(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAiCommand()}
                 placeholder="e.g., Keep the trip under ₹60,000..."
-                className="flex-1 px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none transition"
+                className="flex-1 px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-secondary-500 outline-none transition"
               />
               <button
                 onClick={handleAiCommand}
                 disabled={aiLoading || !aiCommand.trim()}
-                className="px-5 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold text-sm hover:from-purple-600 hover:to-indigo-600 disabled:opacity-50 transition-all shadow-lg shadow-purple-500/20"
+                className="px-5 py-3 rounded-xl bg-secondary-600 hover:bg-secondary-700 text-white font-bold text-sm disabled:opacity-50 transition-all shadow-md"
               >
                 {aiLoading ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -856,8 +864,8 @@ const BudgetView = ({ trip, itinerary }) => {
             {/* AI Result */}
             {aiResult && (
               <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-                <div className={`p-4 rounded-xl ${aiResult.success !== false ? 'bg-purple-50 dark:bg-purple-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
-                  <p className={`text-sm font-semibold ${aiResult.success !== false ? 'text-purple-700 dark:text-purple-300' : 'text-red-700 dark:text-red-300'}`}>
+                <div className={`p-4 rounded-xl ${aiResult.success !== false ? 'bg-secondary-50 dark:bg-secondary-950/40 border border-secondary-200 dark:border-secondary-900/60' : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/40'}`}>
+                  <p className={`text-sm font-semibold ${aiResult.success !== false ? 'text-secondary-900 dark:text-secondary-200' : 'text-red-700 dark:text-red-300'}`}>
                     {aiResult.message}
                   </p>
                 </div>
@@ -901,13 +909,13 @@ const BudgetView = ({ trip, itinerary }) => {
                   <div className="space-y-2">
                     <h5 className="text-xs font-bold text-slate-500 uppercase">Recommendations</h5>
                     {aiResult.data.recommendations.map((rec, i) => (
-                      <div key={i} className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-xs flex items-start gap-2">
-                        <Zap className="w-4 h-4 text-indigo-500 flex-shrink-0 mt-0.5" />
+                      <div key={i} className="p-3 rounded-lg bg-secondary-50 dark:bg-secondary-950/30 text-xs flex items-start gap-2">
+                        <Zap className="w-4 h-4 text-secondary-600 flex-shrink-0 mt-0.5" />
                         <div>
-                          <span className="font-bold text-indigo-700 dark:text-indigo-300 block">
+                          <span className="font-bold text-secondary-800 dark:text-secondary-200 block">
                             {rec.icon} {rec.category}: {rec.suggestion || rec.title}
                           </span>
-                          {rec.description && <span className="text-indigo-600/70 dark:text-indigo-400/70">{rec.description}</span>}
+                          {rec.description && <span className="text-secondary-700/80 dark:text-secondary-300/80">{rec.description}</span>}
                           {rec.potentialSavings > 0 && (
                             <span className="block font-bold text-emerald-500 mt-0.5">Potential savings: {formatCurrency(rec.potentialSavings, currency)}</span>
                           )}

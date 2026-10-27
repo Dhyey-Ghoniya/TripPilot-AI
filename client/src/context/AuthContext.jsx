@@ -10,6 +10,13 @@ export const AuthProvider = ({ children }) => {
 
   // Restore authenticated session on application mount
   const refreshUser = useCallback(async () => {
+    const token = localStorage.getItem('trippilot_token');
+    if (!token) {
+      setUser(null);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const response = await authService.getCurrentUser();
       if (response && response.success && response.data?.user) {

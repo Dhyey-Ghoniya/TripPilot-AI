@@ -105,24 +105,19 @@ const AttractionsExplorer = () => {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-8 px-4 sm:px-6 lg:px-8 transition-colors space-y-10">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header Hero Section */}
-        <div className="relative pt-10 pb-12 px-6 sm:px-10 bg-gradient-to-br from-primary-950 via-slate-900 to-primary-900 text-white rounded-3xl shadow-xl overflow-hidden border border-slate-800">
-          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#14b8a6_1px,transparent_1px)] [background-size:16px_16px]" />
-
+        <div className="relative pt-10 pb-12 px-6 sm:px-10 bg-slate-950 text-white rounded-xl overflow-hidden border border-slate-800">
           <div className="relative z-10 max-w-4xl mx-auto text-center space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-secondary-500/20 text-secondary-300 border border-secondary-400/30 backdrop-blur-md">
+            <p className="inline-flex items-center gap-2 px-3 py-1 rounded-md text-xs font-semibold bg-secondary-900/50 text-secondary-200 border border-secondary-700/40">
               <Sparkles className="w-3.5 h-3.5 text-secondary-400" />
-              <span>14 Activity Categories • Timeline & Proximity Fit</span>
-            </div>
+              <span>14 activity categories</span>
+            </p>
 
-            <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white">
-              Discover Experiences, <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary-400 via-teal-300 to-amber-300">
-                Fit To Your Journey.
-              </span>
+            <h1 className="font-display text-3xl sm:text-5xl font-bold tracking-tight text-white">
+              Find activities that fit the day you already planned
             </h1>
 
-            <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto font-light leading-relaxed">
-              Explore sightseeing, adventures, local food walks, photography spots, and heritage tours with live itinerary fit & transit estimation.
+            <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto leading-relaxed">
+              Sightseeing, food walks, heritage sites, and outdoor stops with visit time and typical ticket cost.
             </p>
 
             {/* AI Recommendation Buttons */}
@@ -145,7 +140,7 @@ const AttractionsExplorer = () => {
                 onClick={() => handleAiRecommendation('Nightlife & evening sunset views')}
                 className="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-secondary-600/30 border border-slate-700 text-xs font-medium text-slate-200 hover:text-white transition-all"
               >
-                <Moon className="w-3.5 h-3.5 inline mr-1 text-indigo-400" />
+                <Moon className="w-3.5 h-3.5 inline mr-1 text-secondary-400" />
                 "Evening & sunset spots"
               </button>
             </div>
@@ -209,7 +204,7 @@ const AttractionsExplorer = () => {
             <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
               <button
                 onClick={() => setSelectedCategory('All')}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
                   selectedCategory === 'All'
                     ? 'bg-secondary-600 text-white shadow-sm'
                     : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
@@ -222,7 +217,7 @@ const AttractionsExplorer = () => {
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
                     selectedCategory === cat
                       ? 'bg-secondary-600 text-white shadow-sm'
                       : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'

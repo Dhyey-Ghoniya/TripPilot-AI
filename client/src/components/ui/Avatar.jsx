@@ -23,7 +23,7 @@ const Avatar = ({ src, alt = 'User avatar', name = '', size = 'md', className = 
       {src ? (
         <img src={src} alt={alt} className="w-full h-full object-cover" />
       ) : (
-        <div className="w-full h-full bg-secondary-600 text-white font-semibold flex items-center justify-center">
+        <div className="w-full h-full bg-[#f2a7a0] text-stone-900 font-semibold flex items-center justify-center">
           {getInitials(name)}
         </div>
       )}

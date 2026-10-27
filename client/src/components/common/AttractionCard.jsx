@@ -31,13 +31,13 @@ const AttractionCard = ({ attraction }) => {
   };
 
   return (
-    <div className="group relative bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-700/80 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col h-full">
+    <div className="group relative bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200/80 dark:border-slate-700/80 shadow-soft hover:shadow-card transition-shadow duration-200 flex flex-col h-full">
       {/* Cover Image Container */}
       <div className="relative aspect-[16/10] overflow-hidden bg-slate-100 dark:bg-slate-900">
         <img
           src={coverImage || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80'}
           alt={name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-200"
           loading="lazy"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent opacity-80" />
@@ -45,7 +45,7 @@ const AttractionCard = ({ attraction }) => {
         {/* Featured Badge */}
         {isFeatured && (
           <div className="absolute top-3 left-3">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500 text-white shadow-md">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-500 text-white shadow-sm">
               <Sparkles className="w-3.5 h-3.5" />
               Featured
             </span>
@@ -54,7 +54,7 @@ const AttractionCard = ({ attraction }) => {
 
         {/* Category Pill */}
         <div className="absolute top-3 right-3">
-          <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-900/80 backdrop-blur-md text-white border border-white/20">
+          <span className="px-2.5 py-1 rounded-md text-xs font-medium bg-slate-900/80 text-white border border-white/20">
             {category}
           </span>
         </div>

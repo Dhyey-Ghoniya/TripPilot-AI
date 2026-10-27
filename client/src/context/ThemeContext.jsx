@@ -4,9 +4,8 @@ const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState(() => {
-    const savedTheme = localStorage.getItem('trippilot_theme');
-    if (savedTheme) return savedTheme;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const savedTheme = localStorage.getItem('trippilot_profile_theme');
+    return savedTheme === 'dark' ? 'dark' : 'light';
   });
 
   useEffect(() => {
@@ -16,7 +15,7 @@ export const ThemeProvider = ({ children }) => {
     } else {
       root.classList.remove('dark');
     }
-    localStorage.setItem('trippilot_theme', theme);
+    localStorage.setItem('trippilot_profile_theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {

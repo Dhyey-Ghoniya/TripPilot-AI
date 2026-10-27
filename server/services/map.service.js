@@ -40,36 +40,54 @@ class MapService {
    * Get map workspace markers & polylines for a trip
    * Displays: airport, hotel, activities, attractions, restaurants, daily route
    */
-  async getTripMapWorkspace(tripId, dayNumber = 1) {
+  async getTripMapWorkspace(tripId, dayNumber = 1, requestedMode = null) {
     const trip = await Trip.findById(tripId).populate('itineraryId');
     if (!trip) throw new Error('Trip not found');
 
-    const destLat = trip.destinations?.[0]?.coordinates?.lat || 25.2048;
-    const destLng = trip.destinations?.[0]?.coordinates?.lng || 55.2708;
+    const destination = trip.destinations?.[0];
+    const destLat = destination?.coordinates?.lat;
+    const destLng = destination?.coordinates?.lng;
 
     const markers = [];
 
-    // 1. Airport Marker
-    markers.push({
-      id: 'marker-airport',
-      category: 'airport',
-      name: `${trip.destinations?.[0]?.name || 'Destination'} International Airport`,
-      coordinates: { lat: destLat + 0.05, lng: destLng + 0.05 },
-      icon: 'plane',
-      color: '#0284c7', // sky-600
-    });
+    if (!Number.isFinite(destLat) || !Number.isFinite(destLng) || (destLat === 0 && destLng === 0)) {
+      return {
+        tripId: trip._id,
+        destination: destination?.name || 'Destination',
+        dayNumber: Number(dayNumber),
+        mapCenter: null,
+        supportedTransportModes: this.supportedTransportModes,
+        activeMode: requestedMode || trip.transportSegments?.[0]?.mode || 'Taxi',
+        markers: [],
+        routeSegments: [],
+        tripIntelligence: {
+          dailyDistanceKm: 0,
+          dailyTravelMinutes: 0,
+          dailyTravelTimeText: 'Unavailable',
+          geographicallyGrouped: [],
+          inefficientRoutingWarnings: [],
+          savedDistanceKm: 0,
+          savedMinutes: 0,
+          routeEfficiencyScore: null,
+        },
+        unavailableReason: 'Verified destination coordinates are not available for this trip yet.',
+      };
+    }
 
-    // 2. Hotel Marker
+    // Only render hotels with verified coordinates.
     if (trip.hotels?.length > 0 && trip.hotels[0].coordinates) {
+      const hotelCoordinates = trip.hotels[0].coordinates;
+      if (Number.isFinite(hotelCoordinates.lat) && Number.isFinite(hotelCoordinates.lng) && (hotelCoordinates.lat !== 0 || hotelCoordinates.lng !== 0)) {
       markers.push({
         id: 'marker-hotel',
         category: 'hotel',
         name: trip.hotels[0].name || 'Selected Stay',
         address: trip.hotels[0].address || '',
-        coordinates: trip.hotels[0].coordinates,
+        coordinates: hotelCoordinates,
         icon: 'building',
         color: '#f59e0b', // amber-500
       });
+      }
     }
 
     // 3. Activities / Attractions / Restaurants for Day N
@@ -84,9 +102,9 @@ class MapService {
     }
 
     dayActivities.forEach((act, idx) => {
-      // Simulate realistic coordinates around center if missing
-      const actLat = act.coordinates?.lat || destLat + (idx % 2 === 0 ? 0.015 * (idx + 1) : -0.012 * (idx + 1));
-      const actLng = act.coordinates?.lng || destLng + (idx % 2 === 0 ? -0.01 * (idx + 1) : 0.018 * (idx + 1));
+      const actLat = act.coordinates?.lat;
+      const actLng = act.coordinates?.lng;
+      if (!Number.isFinite(actLat) || !Number.isFinite(actLng) || (actLat === 0 && actLng === 0)) return;
 
       const titleLower = (act.activity || act.title || '').toLowerCase();
       const categoryLower = (act.category || '').toLowerCase();
@@ -117,13 +135,14 @@ class MapService {
 
     // Compute route segments between consecutive waypoints
     const routeSegments = [];
+    const activeMode = requestedMode || trip.transportSegments?.[0]?.mode || 'Taxi';
     let totalDailyDistanceKm = 0;
     let totalDailyTravelMinutes = 0;
 
     for (let i = 0; i < routeWaypoints.length - 1; i++) {
       const from = routeWaypoints[i];
       const to = routeWaypoints[i + 1];
-      const route = await mapProvider.calculateRoute(from.coordinates, to.coordinates, trip.transportSegments?.[0]?.mode || 'Taxi');
+      const route = await mapProvider.calculateRoute(from.coordinates, to.coordinates, activeMode);
       
       routeSegments.push({
         segmentIndex: i + 1,
@@ -146,11 +165,11 @@ class MapService {
 
     return {
       tripId: trip._id,
-      destination: trip.destinations?.[0]?.name,
+      destination: destination?.name,
       dayNumber: Number(dayNumber),
       mapCenter: { lat: destLat, lng: destLng },
       supportedTransportModes: this.supportedTransportModes,
-      activeMode: trip.transportSegments?.[0]?.mode || 'Taxi',
+      activeMode,
       markers,
       routeSegments,
       tripIntelligence: {
@@ -291,9 +310,9 @@ class MapService {
       if (day.activities && day.activities.length > 2) {
         const waypoints = day.activities.map((a) => ({
           name: a.activity || a.title || 'Spot',
-          coordinates: a.coordinates || { lat: 25.2, lng: 55.27 },
-          activityObj: a,
-        }));
+              coordinates: a.coordinates,
+              activityObj: a,
+        })).filter((waypoint) => Number.isFinite(waypoint.coordinates?.lat) && Number.isFinite(waypoint.coordinates?.lng) && (waypoint.coordinates.lat !== 0 || waypoint.coordinates.lng !== 0));
 
         const result = this.optimizeItineraryRoute(waypoints);
         totalSavedKm += result.savedDistanceKm;

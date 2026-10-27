@@ -11,8 +11,8 @@ const EmptyState = ({
   className = '',
 }) => {
   return (
-    <div className={`flex flex-col items-center justify-center p-8 md:p-12 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 ${className}`}>
-      <div className="w-16 h-16 rounded-full bg-secondary-50 dark:bg-slate-700 text-secondary-600 dark:text-secondary-400 flex items-center justify-center mb-4">
+    <div className={`flex flex-col items-center justify-center p-8 md:p-12 text-center rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 ${className}`}>
+      <div className="w-16 h-16 rounded-xl bg-secondary-50 dark:bg-slate-700 text-secondary-600 dark:text-secondary-400 flex items-center justify-center mb-4">
         <Icon className="w-8 h-8" />
       </div>
       <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">{title}</h3>

@@ -11,6 +11,21 @@
 
 // Comprehensive destination photo repository to prevent duplicates
 const CURATED_LOCATION_POOLS = {
+  genoa: [
+    'https://files.manuscdn.com/search-media/310519664045938778/uOMAKrlelMWSdUA3v6LANy/n7rkvMPaFT9YWe5hdHDJeC.jpg',
+    'https://files.manuscdn.com/search-media/310519664045938778/uOMAKrlelMWSdUA3v6LANy/KKrcnM6d9gwqS5b4KUQDG7.jpg',
+  ],
+  genoaItaly: [
+    'https://files.manuscdn.com/search-media/310519664045938778/uOMAKrlelMWSdUA3v6LANy/n7rkvMPaFT9YWe5hdHDJeC.jpg',
+  ],
+  reykjavik: [
+    'https://files.manuscdn.com/search-media/310519664045938778/uOMAKrlelMWSdUA3v6LANy/Zax5FiWBjZjBcSMSiRtmXn.jpg',
+    'https://files.manuscdn.com/search-media/310519664045938778/uOMAKrlelMWSdUA3v6LANy/Umjteqz7aWz8mhqi7NHXiU.jpg',
+  ],
+  london: [
+    'https://files.manuscdn.com/search-media/310519664045938778/uOMAKrlelMWSdUA3v6LANy/96nNHG3ZNuxPHkYkSJYEU.jpeg',
+    'https://files.manuscdn.com/search-media/310519664045938778/uOMAKrlelMWSdUA3v6LANy/vPfBgYFpShkvUpfrYPi4HW.webp',
+  ],
   bangalore: [
     'https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=800&q=80', // Bangalore Palace Heritage
     'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=800&q=80', // Lalbagh Botanical Gardens
@@ -54,6 +69,136 @@ const CURATED_LOCATION_POOLS = {
 };
 
 class ImageService {
+  constructor() {
+    this.activityPhotoCache = new Map();
+    this.tripPhotoUsage = new Map();
+  }
+
+  async fetchActivityPhoto({ activity, location = '', destination = '', tripKey = '', excludeUrls = [] }) {
+    const activityText = `${activity} ${location}`.toLowerCase();
+    let referenceSubject = '';
+    if (/lunch|dinner|breakfast|food|restaurant|bistro|culinary|meal|cuisine/.test(activityText)) {
+      const cuisine = destination.toLowerCase().includes('goa') ? 'Goan cuisine' : 'regional cuisine';
+      referenceSubject = `${destination} ${cuisine} food`;
+    } else if (/beach|promenade|walk|leisure|waterfront|coast|swim|sunset/.test(activityText)) {
+      referenceSubject = `${destination} beach coast`;
+    } else if (/historic|heritage|fort|church|museum|monument|palace/.test(activityText)) {
+      referenceSubject = `${destination} fort church heritage`;
+    } else if (/market|bazaar|shopping/.test(activityText)) {
+      referenceSubject = `${destination} market bazaar`;
+    } else if (/airport|station|departure|arrival|journey|flight|train|transfer/.test(activityText)) {
+      referenceSubject = `${destination} airport station`;
+    } else if (/hotel|check.?in|resort|stay|accommodation/.test(activityText)) {
+      referenceSubject = `${destination} hotel resort`;
+    } else if (destination) {
+      referenceSubject = `${destination} landmark`;
+    }
+
+    const queries = [
+      [activity, location, destination].filter(Boolean).join(' '),
+      referenceSubject,
+      [activity, destination].filter(Boolean).join(' '),
+    ].filter((query, index, list) => query && list.indexOf(query) === index);
+    const excluded = new Set(excludeUrls);
+    let tripUsed = new Set();
+    if (tripKey) {
+      tripUsed = this.tripPhotoUsage.get(tripKey) || new Set();
+      this.tripPhotoUsage.set(tripKey, tripUsed);
+    }
+
+    for (const query of queries) {
+      const cacheKey = query.toLowerCase();
+      let photos = this.activityPhotoCache.get(cacheKey);
+      if (!photos) {
+        photos = await this.searchWikimediaCommons(query, destination);
+        this.activityPhotoCache.set(cacheKey, photos);
+      }
+      const photo = photos.find((candidate) => !excluded.has(candidate.url) && !tripUsed.has(candidate.url));
+      if (photo) {
+        if (tripKey) {
+          tripUsed.add(photo.url);
+          if (this.tripPhotoUsage.size > 500) {
+            this.tripPhotoUsage.delete(this.tripPhotoUsage.keys().next().value);
+          }
+        }
+        return {
+          ...photo,
+          matchType: query === referenceSubject ? 'reference' : 'activity',
+        };
+      }
+    }
+
+    return null;
+  }
+
+  async searchWikimediaCommons(query, destination = '') {
+    try {
+      const params = new URLSearchParams({
+        action: 'query',
+        generator: 'search',
+        gsrsearch: query,
+        gsrnamespace: '6',
+        gsrlimit: '10',
+        prop: 'imageinfo|categories',
+        cllimit: '50',
+        iiprop: 'mime|url|extmetadata',
+        iiurlwidth: '800',
+        iiextmetadatafilter: 'Artist|Credit|LicenseShortName|LicenseUrl|ObjectName',
+        format: 'json',
+        origin: '*',
+      });
+      const response = await fetch(`https://commons.wikimedia.org/w/api.php?${params}`, {
+        headers: {
+          Accept: 'application/json',
+          'User-Agent': 'TripPilot/1.0 (travel itinerary photo search)',
+        },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!response.ok) return [];
+
+      const data = await response.json();
+      return Object.values(data?.query?.pages || {}).flatMap((page) => {
+        const info = page.imageinfo?.[0];
+        const metadata = info?.extmetadata || {};
+        const url = info?.thumburl || info?.url;
+        const categoryNames = (page.categories || []).map((category) => category.title.toLowerCase());
+        const fileName = page.title.toLowerCase();
+        const searchableMetadata = `${fileName} ${categoryNames.join(' ')}`;
+        const destinationTerms = destination.toLowerCase()
+          .replace(/[^a-z0-9 ]/g, ' ')
+          .split(/\s+/)
+          .filter((term) => term.length > 2 && !['central', 'north', 'south', 'east', 'west', 'city', 'region'].includes(term));
+        const isLikelyIllustration = /ai[- ]generated|generated with ai|illustration|digital art|rendering|diagram|map\./i.test(fileName);
+        const isTaggedAsAi = categoryNames.some((category) => /ai[- ]generated|generated by artificial intelligence/.test(category));
+        const matchesDestination = destinationTerms.length === 0 || destinationTerms.some((term) => searchableMetadata.includes(term));
+        if (!url || !info?.descriptionurl || !/^image\/(jpeg|png|webp)$/i.test(info.mime || '') || isLikelyIllustration || isTaggedAsAi || !matchesDestination) return [];
+
+        const stripHtml = (value = '') => value
+          .replace(/<[^>]*>/g, '')
+          .replace(/&amp;/g, '&')
+          .replace(/&quot;/g, '"')
+          .replace(/&#039;/g, "'")
+          .trim();
+        const artist = stripHtml(metadata.Artist?.value || metadata.Credit?.value || '');
+        const licenseName = stripHtml(metadata.LicenseShortName?.value || '');
+        const licenseUrl = metadata.LicenseUrl?.value || '';
+        if (!licenseName) return [];
+
+        return [{
+          url,
+          sourceUrl: info.descriptionurl,
+          title: stripHtml(metadata.ObjectName?.value || page.title.replace(/^File:/, '')),
+          attribution: artist,
+          licenseName,
+          licenseUrl,
+        }];
+      });
+    } catch (error) {
+      console.warn('[ImageService] Wikimedia Commons activity photo search failed:', error.message);
+      return [];
+    }
+  }
+
   /**
    * Main entry point to fetch authentic photo URL for a destination/attraction
    */

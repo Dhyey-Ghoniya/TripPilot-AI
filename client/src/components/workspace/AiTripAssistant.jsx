@@ -16,6 +16,8 @@ import {
   FileText,
   Package,
   X,
+  Plane,
+  Building2,
 } from 'lucide-react';
 import Card from '../common/Card';
 import Button from '../ui/Button';
@@ -101,7 +103,7 @@ const AiTripAssistant = ({ tripId, onExecuteCommand }) => {
             <p className="text-[11px] text-slate-500">Conversational trip state controller</p>
           </div>
         </div>
-        <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+        <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
           Active Trip Memory
         </span>
       </div>
@@ -153,7 +155,8 @@ const AiTripAssistant = ({ tripId, onExecuteCommand }) => {
                       <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-xl flex flex-col gap-2 shadow-sm">
                         <div className="flex justify-between items-center">
                           <span className="font-bold text-[12px] text-slate-900 dark:text-white flex items-center gap-1.5">
-                            ✈️ {flight.airline} <span className="opacity-50 text-[10px]">via {flight.providerName || 'Skyscanner'}</span>
+                            <Plane className="w-3.5 h-3.5 text-secondary-500" />
+                            {flight.airline} <span className="opacity-50 text-[10px]">via {flight.providerName || 'Skyscanner'}</span>
                           </span>
                           <span className="font-black text-emerald-600 dark:text-emerald-400 text-xs">₹{(flight.price?.amount || flight.price || 14500).toLocaleString()}</span>
                         </div>
@@ -180,8 +183,9 @@ const AiTripAssistant = ({ tripId, onExecuteCommand }) => {
                       <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-xl flex flex-col gap-2 shadow-sm">
                         <div className="flex justify-between items-start">
                           <div>
-                            <span className="font-bold text-[12px] text-slate-900 dark:text-white block">
-                              🏨 {hotel.name}
+                            <span className="font-bold text-[12px] text-slate-900 dark:text-white flex items-center gap-1.5">
+                              <Building2 className="w-3.5 h-3.5 text-secondary-500" />
+                              {hotel.name}
                             </span>
                             <span className="text-[10px] text-slate-500">{hotel.neighborhood || hotel.address || 'Central Corridor'}</span>
                           </div>

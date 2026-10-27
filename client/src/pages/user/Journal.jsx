@@ -233,9 +233,9 @@ const Journal = () => {
       {/* Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 p-6 md:p-8 rounded-3xl text-white shadow-xl">
         <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 text-xs font-semibold border border-teal-500/30">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-teal-500/20 text-teal-300 text-xs font-semibold border border-teal-500/30">
             <BookOpen className="w-3.5 h-3.5" />
-            Module 14 — Post-Trip Intelligence Hub
+            Post-Trip Journal & Spending Analytics
           </div>
           <h1 className="text-3xl md:text-4xl font-black tracking-tight">Travel Journal & Analytics</h1>
           <p className="text-slate-300 text-sm max-w-2xl">
@@ -400,8 +400,8 @@ const Journal = () => {
                     {j.highlights && j.highlights.length > 0 && (
                       <div className="flex flex-wrap gap-1">
                         {j.highlights.map((hl, idx) => (
-                          <span key={idx} className="text-[10px] px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 font-semibold border border-teal-200/40">
-                            ✨ {hl}
+                          <span key={idx} className="text-[10px] px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 font-semibold border border-teal-200/40">
+                            {hl}
                           </span>
                         ))}
                       </div>
@@ -473,10 +473,10 @@ const Journal = () => {
               </p>
             </Card>
 
-            <Card className="p-6 space-y-2 border-l-4 border-l-indigo-500">
+            <Card className="p-6 space-y-2 border-l-4 border-l-secondary-600">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Destinations Visited</span>
-                <Globe className="w-5 h-5 text-indigo-600" />
+                <Globe className="w-5 h-5 text-secondary-600" />
               </div>
               <p className="text-2xl font-black text-slate-900 dark:text-white">
                 {analytics?.destinationsVisited?.totalDestinations || 0}
@@ -597,8 +597,7 @@ const Journal = () => {
          ───────────────────────────────────────────────────────────────── */}
       {activeTab === 'personalization' && (
         <div className="space-y-8">
-          <Card className="p-8 bg-gradient-to-br from-slate-900 via-slate-950 to-teal-950 text-white space-y-6 shadow-2xl relative overflow-hidden border border-teal-500/20">
-            <div className="absolute right-0 top-0 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+          <Card className="p-8 bg-slate-950 text-white space-y-6 relative overflow-hidden border border-slate-800">
 
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-2xl bg-teal-500/20 text-teal-300 border border-teal-500/30">
@@ -644,7 +643,7 @@ const Journal = () => {
             <div className="p-4 rounded-xl bg-teal-950/60 border border-teal-500/30 flex items-start gap-3 text-xs text-slate-300">
               <ShieldCheck className="w-5 h-5 text-teal-400 shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold text-white mb-0.5">🔒 Strict Non-Sensitive Personalization Guarantee</p>
+                <p className="font-bold text-white mb-0.5">Strict Non-Sensitive Personalization Guarantee</p>
                 <p className="text-slate-400">
                   {personalization?.privacyNotice || 'Anti-bias Privacy Protection: All inferred data is strictly limited to non-sensitive travel parameters. The AI never infers sensitive personal characteristics such as religion, race, politics, or financial specifics.'}
                 </p>

@@ -113,7 +113,7 @@ const MyTrips = () => {
   const handleMarkCompleted = async (tripId) => {
     try {
       const res = await tripService.markCompleted(tripId);
-      addToast(res?.message || '🎉 Trip marked completed! Travel history updated.', 'success');
+      addToast(res?.message || 'Trip marked completed. Travel history updated.', 'success');
       fetchTripsAndAnalytics();
     } catch (err) {
       addToast('Could not mark trip completed.', 'error');
@@ -218,7 +218,7 @@ const MyTrips = () => {
         <div>
           <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">My Trips</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
-            Central Trip Management Engine — manage upcoming journeys, drafts, saved blueprints, and completed travel history
+            Central Trip Management Engine: manage upcoming journeys, drafts, saved blueprints, and completed travel history
           </p>
         </div>
         <Link to="/plan-trip">
@@ -561,7 +561,7 @@ const MyTrips = () => {
                   <div className="space-y-1 text-xs text-slate-700">
                     {(day.activities || []).map((act, i) => (
                       <div key={i} className="flex items-center justify-between border-b border-slate-200/60 pb-1">
-                        <span>{act.time} — <strong>{act.activity}</strong> ({act.location})</span>
+                        <span>{act.time}: <strong>{act.activity}</strong> ({act.location})</span>
                         <span className="font-semibold">₹{act.cost}</span>
                       </div>
                     ))}

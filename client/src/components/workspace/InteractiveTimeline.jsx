@@ -18,47 +18,21 @@ import Card from '../common/Card';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
 import Modal from '../common/Modal';
+import ActivityPhoto from '../common/ActivityPhoto';
 
 const CATEGORY_COLORS = {
   Sightseeing: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
   Dining: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
-  Cultural: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
+  Cultural: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20',
   Shopping: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
   Relaxation: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
-  Adventure: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
-};
-
-const getActivityPhotoUrl = (item) => {
-  if (item.imageUrl) return item.imageUrl;
-  const title = (item.activity || item.title || '').toLowerCase();
-
-  if (title.includes('palace') || title.includes('fort') || title.includes('heritage')) {
-    return 'https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=600&q=80';
-  }
-  if (title.includes('garden') || title.includes('nature') || title.includes('park') || title.includes('botanical')) {
-    return 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80';
-  }
-  if (title.includes('food') || title.includes('culinary') || title.includes('thali') || title.includes('lunch') || title.includes('dinner') || title.includes('bistro')) {
-    return 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80';
-  }
-  if (title.includes('market') || title.includes('bazaar') || title.includes('shopping') || title.includes('craft')) {
-    return 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=600&q=80';
-  }
-  if (title.includes('cocktail') || title.includes('rooftop') || title.includes('music') || title.includes('night') || title.includes('pub')) {
-    return 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80';
-  }
-  if (title.includes('journey') || title.includes('outbound') || title.includes('return') || title.includes('departure') || title.includes('flight') || title.includes('train')) {
-    return 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=600&q=80';
-  }
-  if (title.includes('museum') || title.includes('art') || title.includes('gallery') || title.includes('science')) {
-    return 'https://images.unsplash.com/photo-1566127444979-b3d2b654e3d7?auto=format&fit=crop&w=600&q=80';
-  }
-
-  return 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=600&q=80';
+  Adventure: 'bg-teal-500/10 text-teal-700 dark:text-teal-400 border-teal-500/20',
 };
 
 const InteractiveTimeline = ({
   itinerary,
+  tripId,
+  destination,
   selectedDay,
   onSelectDay,
   onAddActivity,
@@ -205,10 +179,12 @@ const InteractiveTimeline = ({
                 </div>
 
                 <Card className="p-0 overflow-hidden hover:shadow-lg transition border border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row">
-                  <img
-                    src={getActivityPhotoUrl(item)}
-                    alt={item.activity}
-                    className="w-full sm:w-40 h-32 sm:h-auto object-cover shrink-0"
+                  <ActivityPhoto
+                    activity={item}
+                    destination={destination}
+                    tripId={tripId}
+                    activityKey={`${selectedDay}-${item._id || index}`}
+                    className="h-32 w-full object-cover sm:h-auto sm:w-40"
                   />
                   <div className="p-5 flex-1 space-y-3">
                     {/* Top Bar: Time, Category Badge, Reorder & Delete */}
@@ -222,7 +198,7 @@ const InteractiveTimeline = ({
                           ({item.durationMinutes || 90} mins)
                         </span>
                         <span
-                          className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${categoryStyle}`}
+                          className={`text-[11px] font-bold px-2.5 py-0.5 rounded-md border ${categoryStyle}`}
                         >
                           {item.category || item.timeSlot || 'Sightseeing'}
                         </span>

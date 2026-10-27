@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { X, Plane, User, LogIn, UserPlus, LogOut, LayoutDashboard, Settings } from 'lucide-react';
 import Button from '../ui/Button';
 import Avatar from '../ui/Avatar';
+import BrandLogo from '../common/BrandLogo';
 
 const MobileDrawer = ({ isOpen, onClose, links = [], isAuthenticated, user, logout }) => {
   const location = useLocation();
@@ -22,12 +23,9 @@ const MobileDrawer = ({ isOpen, onClose, links = [], isAuthenticated, user, logo
         <div>
           {/* Header */}
           <div className="flex items-center justify-between pb-6 border-b border-slate-100 dark:border-slate-800">
-            <Link to="/" onClick={onClose} className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-secondary-600 flex items-center justify-center text-white font-bold">
-                <Plane className="w-4 h-4" />
-              </div>
-              <span className="font-extrabold text-slate-900 dark:text-white text-lg">TripPilot AI</span>
-            </Link>
+            <div onClick={onClose}>
+              <BrandLogo size="sm" />
+            </div>
             <button
               onClick={onClose}
               className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -58,9 +56,9 @@ const MobileDrawer = ({ isOpen, onClose, links = [], isAuthenticated, user, logo
                   key={link.path}
                   to={link.path}
                   onClick={onClose}
-                  className={`px-4 py-3 rounded-xl font-medium text-sm transition flex items-center gap-3 ${
+                  className={`px-4 py-3 rounded-lg font-medium text-sm transition-colors duration-200 flex items-center gap-3 ${
                     isActive
-                      ? 'bg-secondary-50 text-secondary-700 dark:bg-slate-800 dark:text-secondary-400 font-semibold'
+                      ? 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white font-semibold'
                       : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                   }`}
                 >

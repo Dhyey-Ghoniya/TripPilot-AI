@@ -79,7 +79,8 @@ class AiExtractorService {
     const isProceedRequested =
       lowerText.includes('you decide') ||
       lowerText.includes('surprise me') ||
-      lowerText.includes('suggest one') ||
+      /\b(?:you\s+)?suggest(?:\s+one)?\b/.test(lowerText) ||
+      lowerText.includes('recommend one') ||
       lowerText.includes('use defaults') ||
       lowerText.includes('go ahead') ||
       lowerText.includes('generate trip') ||

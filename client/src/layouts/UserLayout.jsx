@@ -7,7 +7,7 @@ const UserLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex transition-colors">
+    <div className="scrapbook-bg min-h-screen flex transition-colors">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <div className="flex-1 lg:pl-64 flex flex-col min-w-0">
         <Header onMobileMenuToggle={() => setIsSidebarOpen(true)} />

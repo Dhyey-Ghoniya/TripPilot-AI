@@ -8,6 +8,7 @@ import { Mail, Lock, User, UserPlus, Phone, CheckCircle2, XCircle, Eye, EyeOff, 
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { getPendingTripSession } from '../../utils/pendingTripStorage';
+import { BrandMark } from '../../components/common/BrandLogo';
 
 const Register = () => {
   const { register } = useAuth();
@@ -76,15 +77,16 @@ const Register = () => {
       });
 
       if (result.success) {
-        showToast('Account created! Welcome to TripPilot AI ✈️', 'success');
+        showToast('Account created. Welcome to TripPilot.', 'success');
 
         const pending = getPendingTripSession();
-        if (pending?.activeTrip?._id) {
-          showToast('Restored your pending trip context!', 'info');
-          navigate(`/trips/${pending.activeTrip._id}`, { replace: true });
-        } else if (pending?.chatLog?.length > 0) {
-          showToast('Restored your AI conversation context!', 'info');
-          navigate('/plan-trip', { replace: true });
+        if (pending) {
+          if (pending.chatLog?.length > 0 || pending.lastPrompt) {
+            showToast('Returning to your trip planner.', 'info');
+            navigate('/plan-trip', { replace: true });
+          } else {
+            navigate('/dashboard', { replace: true });
+          }
         } else {
           navigate('/dashboard', { replace: true });
         }
@@ -103,11 +105,11 @@ const Register = () => {
     <div className="max-w-xl mx-auto px-4 py-12">
       <Card className="p-8 space-y-6">
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-primary-900 to-secondary-600 text-white flex items-center justify-center mx-auto shadow-md">
-            <Plane className="w-6 h-6" />
+          <div className="flex justify-center mb-1">
+            <BrandMark size={48} />
           </div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white">Create Account</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Join TripPilot AI and start planning smarter journeys</p>
+          <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-white">Create an account</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Save itineraries, wishlists, and planner sessions</p>
         </div>
 
         {errorMessage && (

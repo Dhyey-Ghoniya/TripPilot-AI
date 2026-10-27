@@ -17,8 +17,13 @@ import Badge from '../ui/Badge';
 const TripIntelligence = ({ trip, itinerary, telemetry }) => {
   const days = itinerary?.days || [];
 
-  const dailyDist = telemetry?.tripIntelligence?.dailyDistanceKm || 12.8;
-  const dailyTravelTime = telemetry?.tripIntelligence?.dailyTravelTimeText || '38m';
+  const hasRouteEstimate = !telemetry?.unavailableReason && (telemetry?.routeSegments?.length || 0) > 0;
+  const dailyDist = hasRouteEstimate && Number.isFinite(telemetry?.tripIntelligence?.dailyDistanceKm)
+    ? telemetry.tripIntelligence.dailyDistanceKm
+    : null;
+  const dailyTravelTime = hasRouteEstimate ? telemetry?.tripIntelligence?.dailyTravelTimeText || null : null;
+  const efficiencyScore = hasRouteEstimate ? telemetry?.tripIntelligence?.routeEfficiencyScore : null;
+  const transportMode = telemetry?.activeMode || trip?.transport?.mode || trip?.transportSegments?.[0]?.mode || 'Taxi';
   const warnings = telemetry?.tripIntelligence?.inefficientRoutingWarnings || [];
   const groupedClusters = telemetry?.tripIntelligence?.geographicallyGrouped || [];
 
@@ -41,7 +46,7 @@ const TripIntelligence = ({ trip, itinerary, telemetry }) => {
       id: 'opt_sequence',
       type: 'efficiency',
       icon: CheckCircle2,
-      color: 'emerald',
+      color: 'sky',
       title: 'Geographically Optimal Sequencing',
       description: 'Your itinerary items are ordered sequentially with zero unnecessary backtracking.',
     });
@@ -53,8 +58,8 @@ const TripIntelligence = ({ trip, itinerary, telemetry }) => {
     type: 'info',
     icon: Navigation,
     color: 'sky',
-    title: `Daily Transit Summary: ${dailyDist} km (${dailyTravelTime})`,
-    description: `Estimated daily travel time using ${trip?.transportSegments?.[0]?.mode || 'Taxi'}. Clustered efficiently around primary destination centers.`,
+    title: `Daily Transit Summary: ${dailyDist === null ? 'Unavailable' : `${dailyDist} km`} (${dailyTravelTime || 'time unavailable'})`,
+    description: `Current route estimate using ${transportMode}.`,
   });
 
   // 3. Geographically Grouped Neighborhood Clusters
@@ -104,8 +109,8 @@ const TripIntelligence = ({ trip, itinerary, telemetry }) => {
             <p className="text-xs text-slate-500">Live telemetry distance, travel time & routing efficiency</p>
           </div>
         </div>
-        <Badge variant={warnings.length > 0 ? 'amber' : 'emerald'} size="sm">
-          {telemetry?.tripIntelligence?.routeEfficiencyScore || 96}% Efficient
+        <Badge variant={warnings.length > 0 ? 'amber' : hasRouteEstimate ? 'secondary' : 'neutral'} size="sm">
+          {efficiencyScore ? `${efficiencyScore}% Efficient` : 'Route unavailable'}
         </Badge>
       </div>
 
@@ -113,15 +118,15 @@ const TripIntelligence = ({ trip, itinerary, telemetry }) => {
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80">
           <span className="text-[10px] text-slate-400 block font-bold uppercase tracking-wider">Daily Distance</span>
-          <span className="text-base font-black text-slate-900 dark:text-white">{dailyDist} km</span>
+          <span className="text-base font-black text-slate-900 dark:text-white">{dailyDist === null ? 'Unavailable' : `${dailyDist} km`}</span>
         </div>
         <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80">
           <span className="text-[10px] text-slate-400 block font-bold uppercase tracking-wider">Daily Travel Time</span>
-          <span className="text-base font-black text-slate-900 dark:text-white">{dailyTravelTime}</span>
+          <span className="text-base font-black text-slate-900 dark:text-white">{dailyTravelTime || 'Unavailable'}</span>
         </div>
         <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 col-span-2 sm:col-span-1">
           <span className="text-[10px] text-slate-400 block font-bold uppercase tracking-wider">Transit Mode</span>
-          <span className="text-base font-black text-secondary-600 dark:text-secondary-400">{trip?.transport?.mode || 'Taxi'}</span>
+          <span className="text-base font-black text-secondary-600 dark:text-secondary-400">{transportMode}</span>
         </div>
       </div>
 
@@ -137,7 +142,7 @@ const TripIntelligence = ({ trip, itinerary, telemetry }) => {
               : item.color === 'sky'
               ? 'border-sky-500/20 bg-sky-500/5'
               : item.color === 'indigo'
-              ? 'border-indigo-500/20 bg-indigo-500/5'
+              ? 'border-secondary-500/20 bg-secondary-500/5'
               : 'border-rose-500/20 bg-rose-500/5';
 
           const iconColor =
@@ -148,7 +153,7 @@ const TripIntelligence = ({ trip, itinerary, telemetry }) => {
               : item.color === 'sky'
               ? 'text-sky-500'
               : item.color === 'indigo'
-              ? 'text-indigo-500'
+              ? 'text-secondary-600'
               : 'text-rose-500';
 
           return (

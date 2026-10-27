@@ -1,13 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Bell, Sun, Moon, User, Settings, LogOut, Menu } from 'lucide-react';
-import { useTheme } from '../../context/ThemeContext';
+import { Search, Bell, User, Settings, LogOut, Menu } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Avatar from '../ui/Avatar';
 import Dropdown from '../common/Dropdown';
 
 const Header = ({ title = 'Dashboard', onMobileMenuToggle }) => {
-  const { isDark, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -25,7 +23,7 @@ const Header = ({ title = 'Dashboard', onMobileMenuToggle }) => {
   const fullName = user ? `${user.firstName} ${user.lastName}` : 'Traveler';
 
   return (
-    <header className="h-16 md:h-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30 transition-colors">
+    <header className="h-16 md:h-20 bg-[#fffaf1]/95 dark:bg-stone-900/95 backdrop-blur-md border-b border-[#bca987] px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30 transition-colors">
       <div className="flex items-center gap-4">
         {onMobileMenuToggle && (
           <button
@@ -51,15 +49,6 @@ const Header = ({ title = 'Dashboard', onMobileMenuToggle }) => {
           />
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
         </div>
-
-        {/* Theme Toggle */}
-        <button
-          onClick={toggleTheme}
-          className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-          title="Toggle theme"
-        >
-          {isDark ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-slate-600" />}
-        </button>
 
         {/* Notifications Icon */}
         <button

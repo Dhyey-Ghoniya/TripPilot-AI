@@ -91,10 +91,10 @@ const AdminCollections = () => {
     try {
       if (editingId) {
         await adminService.updateCollection(editingId, payload);
-        showToast('Collection updated successfully! ✨', 'success');
+        showToast('Collection updated successfully.', 'success');
       } else {
         await adminService.createCollection(payload);
-        showToast('New travel collection created! ✨', 'success');
+        showToast('New travel collection created.', 'success');
       }
       setIsModalOpen(false);
       fetchCollections();

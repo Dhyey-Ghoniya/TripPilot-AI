@@ -1,48 +1,19 @@
-import React from 'react';
-import { Sparkles, Compass, ShieldCheck } from 'lucide-react';
+﻿import React from 'react';
+import { Compass, Map, MessageCircle, Wallet } from 'lucide-react';
 import TripPilotChat from '../../components/chat/TripPilotChat';
-import Card from '../../components/common/Card';
 
-const PlanTrip = () => {
-  return (
-    <div className="max-w-5xl mx-auto space-y-8 pb-16">
-      {/* Header */}
-      <div className="space-y-3 text-center sm:text-left">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-secondary-500/10 border border-secondary-500/20 text-secondary-600 dark:text-secondary-400 text-xs font-bold">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Conversational AI Travel Engineering</span>
-        </div>
-        <h1 className="text-3xl sm:text-5xl font-black text-slate-900 dark:text-white tracking-tight">
-          AI Trip Command Center
-        </h1>
-        <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed">
-          Describe your travel plans naturally. TripPilot AI calculates optimal pacing, flight corridors, neighborhood stays, and budget distribution in real time.
-        </p>
-      </div>
-
-      {/* Primary Chatbot Workspace */}
-      <TripPilotChat
-        title="Primary AI Trip Planner & Copilot"
-        className="shadow-2xl border-slate-200/80 dark:border-slate-800"
-      />
-
-      {/* Architecture Information Banner */}
-      <Card className="p-6 bg-gradient-to-r from-slate-900 via-primary-950 to-slate-900 text-white space-y-3 border border-slate-800 shadow-xl">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Compass className="w-5 h-5 text-secondary-400" />
-            <h3 className="font-bold text-sm text-white">Unified Trip Engine Guarantee</h3>
-          </div>
-          <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
-            <ShieldCheck className="w-3.5 h-3.5" /> Direct Single Source of Truth
-          </span>
-        </div>
-        <p className="text-xs text-slate-300 leading-relaxed font-light">
-          Every prompt you send instantly synthesizes a complete trip blueprint in MongoDB. You can ask follow-up questions to adjust dates, replace hotel choices, optimize budget, or add destinations dynamically.
-        </p>
-      </Card>
+const PlanTrip = () => (
+  <div className="min-h-screen bg-[#fffaf4] py-10 pb-20 dark:bg-slate-950 sm:py-14">
+    <div className="page-shell space-y-10">
+      <div className="max-w-3xl space-y-4"><div className="flex items-center gap-3 text-xs font-bold uppercase tracking-[0.2em] text-[#bd5734] dark:text-orange-300"><span className="h-px w-8 bg-[#ef8354]" />Your trip starts here</div><h1 className="font-display text-4xl font-bold leading-tight tracking-[-0.04em] text-slate-950 dark:text-white sm:text-6xl">Tell us the kind of trip you want to take.</h1><p className="max-w-2xl text-base leading-7 text-slate-600 dark:text-slate-400">Start with a sentence. TripPilot will ask for only the details needed to shape a useful route, then keep the conversation connected to the saved trip.</p></div>
+      <TripPilotChat title="TripPilot travel desk" className="max-w-5xl rounded-2xl border-[#eadfd3] bg-white p-5 shadow-xl sm:p-7" />
+      <div className="grid gap-4 md:grid-cols-3">{[
+        { icon: MessageCircle, title: 'Plan in plain language', text: 'Say where you want to go, what you care about, and what needs to stay within budget.' },
+        { icon: Map, title: 'Review the route visually', text: 'Move from the conversation to the saved itinerary, map, stays, transport, and day details.' },
+        { icon: Wallet, title: 'Keep refining', text: 'Ask to make the trip cheaper, add a city, change a hotel, or slow down a day.' },
+      ].map(({ icon: Icon, title, text }) => <div key={title} className="border-t border-[#eadfd3] pt-5"><Icon className="h-5 w-5 text-[#bd5734]" /><h2 className="mt-3 font-display text-xl font-bold text-slate-950 dark:text-white">{title}</h2><p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">{text}</p></div>)}</div>
     </div>
-  );
-};
+  </div>
+);
 
 export default PlanTrip;

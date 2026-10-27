@@ -170,10 +170,10 @@ const AdminDestinations = () => {
     try {
       if (editingId) {
         await destinationService.updateDestination(editingId, payload);
-        showToast('Destination updated successfully! ✨', 'success');
+        showToast('Destination updated successfully.', 'success');
       } else {
         await destinationService.createDestination(payload);
-        showToast('New destination added successfully! ✨', 'success');
+        showToast('New destination added successfully.', 'success');
       }
       setIsFormModalOpen(false);
       fetchAdminDestinations();

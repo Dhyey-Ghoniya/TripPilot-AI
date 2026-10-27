@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Plane, LayoutDashboard, Compass, Sparkles, MapPin, Heart, BookOpen, Settings, LogOut, X } from 'lucide-react';
 
 import { useAuth } from '../../context/AuthContext';
+import BrandLogo from '../common/BrandLogo';
 
 const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
@@ -31,24 +32,17 @@ const Sidebar = ({ isOpen, onClose }) => {
       )}
 
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 lg:z-30 w-64 bg-slate-900 text-slate-300 flex flex-col justify-between p-6 transition-transform duration-300 ${
+        className={`fixed top-0 bottom-0 left-0 z-50 lg:z-30 w-64 bg-[#fffaf0] text-stone-900 border-r-2 border-stone-900 flex flex-col justify-between p-6 transition-transform duration-300 ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
         <div>
           {/* Top Logo */}
-          <div className="flex items-center justify-between pb-8 border-b border-slate-800">
-            <Link to="/" className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary-600 to-secondary-500 flex items-center justify-center text-white font-bold shadow-md">
-                <Plane className="w-5 h-5" />
-              </div>
-              <span className="text-xl font-extrabold tracking-tight text-white">
-                TripPilot<span className="text-secondary-400"> AI</span>
-              </span>
-            </Link>
+          <div className="flex items-center justify-between pb-8 border-b-2 border-stone-900">
+            <BrandLogo size="md" />
             <button
               onClick={onClose}
-              className="lg:hidden p-1 rounded-lg text-slate-400 hover:text-white"
+              className="lg:hidden p-1 rounded-lg text-stone-500 hover:text-stone-900"
             >
               <X className="w-5 h-5" />
             </button>
@@ -65,11 +59,11 @@ const Sidebar = ({ isOpen, onClose }) => {
                   onClick={onClose}
                   className={`flex items-center gap-3.5 px-4 py-3 rounded-xl font-semibold text-sm transition-all ${
                     isActive
-                      ? 'bg-secondary-600 text-white shadow-lg shadow-secondary-900/30'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
+                      ? 'scrapbook-sticky text-stone-900'
+                      : 'text-stone-600 hover:text-stone-900 hover:bg-[#fff4e0]'
                   }`}
                 >
-                  <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                  <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-stone-400'}`} />
                   {item.label}
                 </Link>
               );
@@ -78,7 +72,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         </div>
 
         {/* Bottom CTA / Exit */}
-        <div className="pt-6 border-t border-slate-800 space-y-3">
+        <div className="pt-6 border-t-2 border-stone-900 space-y-3">
           {isAdmin && (
             <Link
               to="/admin"
@@ -89,7 +83,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           )}
           <Link
             to="/"
-            className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-slate-400 hover:text-rose-400 text-xs font-semibold transition"
+            className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-stone-500 hover:text-rose-600 text-xs font-semibold transition"
           >
             <LogOut className="w-4 h-4" />
             Exit Dashboard

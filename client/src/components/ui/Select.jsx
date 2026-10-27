@@ -14,11 +14,11 @@ const Select = ({
   return (
     <div className="w-full">
       {label && (
-        <label htmlFor={selectId} className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
+        <label htmlFor={selectId} className="block text-xs font-semibold tracking-wide text-slate-600 dark:text-slate-400 mb-1.5">
           {label}
         </label>
       )}
-      <div className="relative rounded-xl shadow-sm">
+      <div className="relative rounded-lg">
         {Icon && (
           <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
             <Icon className="h-4 h-4" />
@@ -26,7 +26,7 @@ const Select = ({
         )}
         <select
           id={selectId}
-          className={`w-full appearance-none rounded-xl border bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm transition duration-200 focus:outline-none focus:ring-2 focus:ring-secondary-500 ${
+          className={`w-full appearance-none rounded-lg border bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm transition duration-200 focus:outline-none focus:ring-2 focus:ring-secondary-500 ${
             Icon ? 'pl-10' : 'px-4'
           } pr-10 py-2.5 ${
             error ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'

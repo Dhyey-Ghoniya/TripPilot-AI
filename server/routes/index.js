@@ -21,6 +21,7 @@ const hotelsRoutes = require('./hotels.routes');
 const activitiesRoutes = require('./activities.routes');
 const mapRoutes = require('./map.routes');
 const journalRoutes = require('./journal.routes');
+const imagesRoutes = require('./images.routes');
 
 router.use('/health', healthRoutes);
 router.use('/auth', authRoutes);
@@ -43,6 +44,7 @@ router.use('/activities', activitiesRoutes);
 router.use('/map', mapRoutes);
 router.use('/journals', journalRoutes);
 router.use('/journal', journalRoutes);
+router.use('/images', imagesRoutes);
 
 module.exports = router;
 

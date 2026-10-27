@@ -28,7 +28,10 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import aiService from '../../services/aiService';
 import tripService from '../../services/tripService';
-import { cleanDestinationName, getAuthenticActivityImage } from '../../utils/activityImageResolver';
+import { BrandMark } from '../../components/common/BrandLogo';
+import ActivityPhoto from '../../components/common/ActivityPhoto';
+import { cleanDestinationName } from '../../utils/activityImageResolver';
+import { savePendingTripSession } from '../../utils/pendingTripStorage';
 
 const PRESET_PROMPTS = [
   'Plan a 5-day trip to Dubai from Ahmedabad for 2 people.',
@@ -53,7 +56,7 @@ const AiPlanner = () => {
   const [generatedItinerary, setGeneratedItinerary] = useState(null);
   const [planningStage, setPlanningStage] = useState(0); // 0: Idle, 1: Extracting, 2: Resolving, 3: Synthesizing, 4: Done
 
-  const chatEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
 
   // Initialize AI session on mount
   useEffect(() => {
@@ -71,9 +74,11 @@ const AiPlanner = () => {
     initSession();
   }, []);
 
-  // Auto scroll chat to bottom
+  // Auto scroll chat transcript container only (never scroll the main window)
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
   }, [messages, isProcessing]);
 
   const handleSendMessage = async (customText = null) => {
@@ -124,7 +129,7 @@ const AiPlanner = () => {
           if (result.itinerary) setGeneratedItinerary(result.itinerary);
 
           if (result.isComplete && result.trip) {
-            addToast(`Synthesized ${result.trip.title}! ✈️`, 'success');
+            addToast(`Synthesized ${result.trip.title}!`, 'success');
           }
         }
       }
@@ -142,15 +147,21 @@ const AiPlanner = () => {
 
     if (isAuthenticated) {
       if (targetId) {
-        addToast('Opening full trip workspace! ✈️', 'success');
+        addToast('Opening full trip workspace!', 'success');
         navigate(`/trips/${targetId}`);
       } else {
         navigate('/my-trips');
       }
     } else {
       if (targetId) {
-        localStorage.setItem('pending_trip_id', targetId);
-        addToast('Please sign in to save & customize your trip blueprint! 🔑', 'info');
+        const lastUserMessage = [...messages].reverse().find((message) => message.sender === 'user');
+        savePendingTripSession({
+          activeTrip: generatedTrip,
+          sessionId,
+          chatLog: messages,
+          lastPrompt: lastUserMessage?.content || '',
+        });
+        addToast('Please sign in to save and customize your trip blueprint.', 'info');
         navigate('/login', { state: { from: { pathname: `/trips/${targetId}` } } });
       } else {
         navigate('/login');
@@ -158,48 +169,19 @@ const AiPlanner = () => {
     }
   };
 
-  const getActivityImage = (act, day) => {
-    if (act?.imageUrl) return act.imageUrl;
-    const title = (act?.activity || act?.title || day?.theme || '').toLowerCase();
-
-    if (title.includes('palace') || title.includes('fort') || title.includes('heritage')) {
-      return 'https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=600&q=80';
-    }
-    if (title.includes('garden') || title.includes('nature') || title.includes('park') || title.includes('botanical')) {
-      return 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80';
-    }
-    if (title.includes('food') || title.includes('culinary') || title.includes('thali') || title.includes('lunch') || title.includes('dinner')) {
-      return 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80';
-    }
-    if (title.includes('market') || title.includes('bazaar') || title.includes('shopping') || title.includes('craft')) {
-      return 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=600&q=80';
-    }
-    if (title.includes('cocktail') || title.includes('rooftop') || title.includes('music') || title.includes('night')) {
-      return 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80';
-    }
-    if (title.includes('journey') || title.includes('outbound') || title.includes('return') || title.includes('departure') || title.includes('flight')) {
-      return 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=600&q=80';
-    }
-    if (title.includes('museum') || title.includes('art') || title.includes('gallery') || title.includes('science')) {
-      return 'https://images.unsplash.com/photo-1566127444979-b3d2b654e3d7?auto=format&fit=crop&w=600&q=80';
-    }
-
-    return 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=600&q=80';
-  };
-
   return (
-    <div className="max-w-7xl mx-auto space-y-8 pb-16">
+    <div className="page-shell space-y-8 pb-16 pt-8">
       {/* Header Banner */}
       <div className="space-y-3">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary-500/10 border border-secondary-500/20 text-secondary-600 dark:text-secondary-400 text-xs font-bold">
+        <p className="section-kicker">
           <Sparkles className="w-3.5 h-3.5" />
-          <span>TripPilot AI Travel Copilot</span>
-        </div>
-        <h1 className="text-3xl sm:text-5xl font-black text-slate-900 dark:text-white tracking-tight">
-          AI Travel Planner
+          Chat planner
+        </p>
+        <h1 className="font-display text-3xl sm:text-5xl font-bold text-slate-900 dark:text-white tracking-tight">
+          Plan a trip in plain language
         </h1>
-        <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed">
-          Describe your dream trip in natural language. Our copilot extracts parameters, resolves any location worldwide, and synthesizes structured day-by-day itineraries.
+        <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
+          Send destination, days, travelers, and budget. The planner extracts those details and builds a day-by-day itinerary you can open in the workspace.
         </p>
       </div>
 
@@ -230,9 +212,7 @@ const AiPlanner = () => {
             {/* Chat Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-primary-900 to-secondary-600 text-white flex items-center justify-center">
-                  <Bot className="w-4 h-4" />
-                </div>
+                <BrandMark size={32} />
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-white">TripPilot Agent</h3>
                   <p className="text-[11px] text-emerald-500 font-semibold flex items-center gap-1">
@@ -242,7 +222,7 @@ const AiPlanner = () => {
                 </div>
               </div>
               {planningStage > 0 && planningStage < 4 && (
-                <div className="flex items-center gap-2 text-xs text-secondary-600 dark:text-secondary-400 font-bold bg-secondary-500/10 px-3 py-1 rounded-full">
+                <div className="flex items-center gap-2 text-xs text-secondary-600 dark:text-secondary-400 font-bold bg-secondary-500/10 px-3 py-1 rounded-md">
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                   <span>Synthesizing...</span>
                 </div>
@@ -250,7 +230,7 @@ const AiPlanner = () => {
             </div>
 
             {/* Chat Transcript Stream */}
-            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+            <div ref={chatContainerRef} className="flex-1 overflow-y-auto space-y-4 pr-2">
               {messages.map((msg, index) => {
                 const isUser = msg.sender === 'user';
                 return (
@@ -304,7 +284,6 @@ const AiPlanner = () => {
                   </div>
                 </div>
               )}
-              <div ref={chatEndRef} />
             </div>
 
             {/* Input Form */}
@@ -388,27 +367,27 @@ const AiPlanner = () => {
               <div className="flex flex-wrap gap-2 text-xs">
                 {extractedParams.destination && (
                   <Badge variant="secondary" size="md">
-                    📍 Destination: {extractedParams.destination}
+                    Destination: {extractedParams.destination}
                   </Badge>
                 )}
                 {extractedParams.origin && (
                   <Badge variant="secondary" size="md">
-                    ✈️ Origin: {extractedParams.origin}
+                    Origin: {extractedParams.origin}
                   </Badge>
                 )}
                 {extractedParams.durationDays && (
                   <Badge variant="accent" size="md">
-                    ⏱️ {extractedParams.durationDays} Days
+                    {extractedParams.durationDays} Days
                   </Badge>
                 )}
                 {extractedParams.travelersCount && (
                   <Badge variant="neutral" size="md">
-                    👥 {extractedParams.travelersCount} Traveler(s)
+                    {extractedParams.travelersCount} Traveler(s)
                   </Badge>
                 )}
                 {extractedParams.budget && (
                   <Badge variant="emerald" size="md">
-                    💰 Budget: {extractedParams.currency || '₹'}
+                    Budget: {extractedParams.currency || '₹'}
                     {extractedParams.budget.toLocaleString()}
                   </Badge>
                 )}
@@ -448,7 +427,6 @@ const AiPlanner = () => {
                       const firstAct = day.activities?.[0] || {};
                       const destRaw = generatedTrip.destinations?.[0]?.name || generatedTrip.destination?.name || 'Bangalore';
                       const cleanDest = cleanDestinationName(destRaw);
-                      const actImg = getAuthenticActivityImage(firstAct, day, day.dayNumber, cleanDest);
 
                       const cleanTheme = (day.theme || `Day ${day.dayNumber}`).replace(/Plan \d+ days in/gi, '').trim();
                       const cleanActivity = (firstAct.activity || day.summary || 'Explore regional landmarks & local dining').replace(/Plan \d+ days in/gi, '').trim();
@@ -459,10 +437,12 @@ const AiPlanner = () => {
                           key={day.dayNumber}
                           className="rounded-2xl bg-slate-800/80 border border-slate-700/80 overflow-hidden shadow-lg space-y-0 flex flex-col sm:flex-row"
                         >
-                          <img
-                            src={actImg}
-                            alt={cleanTheme}
-                            className="w-full sm:w-36 h-32 sm:h-auto object-cover shrink-0"
+                          <ActivityPhoto
+                            activity={firstAct}
+                            destination={cleanDest}
+                            tripId={generatedTrip._id}
+                            activityKey={`day-${day.dayNumber}`}
+                            className="h-32 w-full object-cover sm:h-32 sm:w-36"
                           />
                           <div className="p-3.5 flex-1 space-y-2">
                             <div className="flex items-center justify-between text-xs">
@@ -480,11 +460,11 @@ const AiPlanner = () => {
 
                             <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
                               <span className="px-2 py-0.5 rounded-full bg-slate-700/80 text-slate-300 font-semibold flex items-center gap-1">
-                                📍 {cleanLocation}
+                                {cleanLocation}
                               </span>
                               {firstAct.transportModeToNext && (
                                 <span className="px-2 py-0.5 rounded-full bg-secondary-900/60 text-secondary-300 font-semibold border border-secondary-700/50">
-                                  🚗 {firstAct.transportModeToNext}
+                                  {firstAct.transportModeToNext}
                                 </span>
                               )}
                             </div>

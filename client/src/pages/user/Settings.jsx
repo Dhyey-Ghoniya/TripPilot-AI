@@ -46,7 +46,7 @@ const Settings = () => {
       });
 
       if (result.success) {
-        showToast('Password changed successfully! 🔐', 'success');
+        showToast('Password changed successfully.', 'success');
         setPasswordData({
           currentPassword: '',
           newPassword: '',
@@ -67,7 +67,7 @@ const Settings = () => {
       <div>
         <h1 className="text-3xl font-black text-slate-900 dark:text-white">Account Settings</h1>
         <p className="text-slate-500 dark:text-slate-400 text-sm">
-          Security management, password updates, and visual theme preferences
+          Manage your account security, notifications, and display preference
         </p>
       </div>
 
@@ -143,14 +143,19 @@ const Settings = () => {
 
       {/* APPEARANCE THEME CARD */}
       <Card className="p-8 space-y-6">
-        <div className="flex items-center justify-between pb-6 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b-2 border-stone-900">
           <div>
-            <h4 className="font-bold text-base text-slate-900 dark:text-white">Appearance Theme</h4>
-            <p className="text-xs text-slate-500">Toggle between Light and Dark visual modes</p>
+            <h4 className="font-bold text-base text-slate-900 dark:text-white">Display preference</h4>
+            <p className="text-xs text-slate-500">Choose light or dark appearance for this browser</p>
           </div>
-          <Button variant="outline" size="sm" onClick={toggleTheme} icon={isDark ? Sun : Moon}>
-            {isDark ? 'Switch to Light' : 'Switch to Dark'}
-          </Button>
+          <div role="group" aria-label="Display preference" className="flex gap-2">
+            <Button variant={!isDark ? 'primary' : 'outline'} size="sm" aria-pressed={!isDark} onClick={() => isDark && toggleTheme()} icon={Sun}>
+              Light
+            </Button>
+            <Button variant={isDark ? 'primary' : 'outline'} size="sm" aria-pressed={isDark} onClick={() => !isDark && toggleTheme()} icon={Moon}>
+              Dark
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-4">

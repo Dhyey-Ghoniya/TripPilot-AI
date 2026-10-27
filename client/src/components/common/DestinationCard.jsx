@@ -51,14 +51,14 @@ const DestinationCard = ({
         <img
           src={coverImg}
           alt={destination.name || destination.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-200"
           loading="lazy"
         />
 
         {/* Wishlist Heart Toggle */}
         <button
           onClick={handleHeartClick}
-          className={`absolute top-3.5 right-3.5 p-2.5 rounded-full backdrop-blur-md transition shadow-md ${
+          className={`absolute top-3.5 right-3.5 p-2.5 rounded-lg backdrop-blur-sm transition-colors duration-200 shadow-md ${
             isSaved
               ? 'bg-rose-500 text-white shadow-rose-500/30'
               : 'bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-200 hover:text-rose-500 dark:hover:text-rose-400'
@@ -76,7 +76,7 @@ const DestinationCard = ({
         </div>
 
         {/* Rating Chip */}
-        <div className="absolute bottom-3.5 left-3.5 bg-slate-900/80 backdrop-blur-md px-2.5 py-1 rounded-full text-xs font-bold text-white flex items-center gap-1 shadow-sm">
+        <div className="absolute bottom-3.5 left-3.5 bg-slate-900/80 backdrop-blur-sm px-2.5 py-1 rounded-md text-xs font-semibold text-white flex items-center gap-1 shadow-sm">
           <Star className="w-3.5 h-3.5 text-amber-400 fill-current" />
           <span>{destination.rating || 4.5}</span>
           {destination.reviewCount !== undefined && (

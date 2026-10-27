@@ -8,7 +8,7 @@ const About = () => {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10">
       <div className="text-center space-y-4">
         <Badge variant="primary" size="md">Project Overview</Badge>
-        <h1 className="text-3xl sm:text-5xl font-black">About TripPilot AI</h1>
+        <h1 className="font-display text-3xl sm:text-5xl font-bold">About TripPilot</h1>
         <p className="text-slate-500 dark:text-slate-400 text-base max-w-2xl mx-auto">
           AI-Powered Personalized Travel Planning and Itinerary Optimization System created as a CSE Capstone Project foundation.
         </p>

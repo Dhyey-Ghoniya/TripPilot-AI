@@ -5,24 +5,17 @@ import {
   Send,
   Bot,
   RefreshCw,
-  MapPin,
-  Calendar,
-  Users,
-  Wallet,
   ArrowRight,
   ExternalLink,
-  Plus,
-  Compass,
-  AlertCircle,
   LogIn,
   UserPlus,
+  X,
 } from 'lucide-react';
 import Button from '../ui/Button';
-import Badge from '../ui/Badge';
 import aiService from '../../services/aiService';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { savePendingTripSession, getPendingTripSession } from '../../utils/pendingTripStorage';
+import { clearPendingTripSession, savePendingTripSession, getPendingTripSession } from '../../utils/pendingTripStorage';
 
 const DEFAULT_SUGGESTED_PROMPTS = [
   'Plan a 5-day trip to Delhi from Ahmedabad for 2 people',
@@ -33,6 +26,21 @@ const DEFAULT_SUGGESTED_PROMPTS = [
   'Keep my Goa trip under ₹50,000',
 ];
 
+const LANDING_PROMPTS = [
+  'Plan 5 days in Japan',
+  'Plan a long weekend in Goa',
+  'Make my trip more affordable',
+];
+
+const STARTER_ACTIONS = [
+  { label: 'Plan a trip', prompt: 'Help me plan a complete trip. Ask for the destination, dates, travelers, origin, and budget.' },
+  { label: 'Flights', prompt: 'Find flight options for my trip and compare available providers, times, and prices.' },
+  { label: 'Hotels', prompt: 'Find hotel options for my trip with neighborhood fit, availability, and prices.' },
+  { label: 'Getting in', prompt: 'Find the best transport options for getting into my destination from the airport or station.' },
+  { label: 'Local SIM', prompt: 'Recommend local SIM and eSIM options for my destination, including practical setup details.' },
+  { label: 'Travel insurance', prompt: 'Compare suitable travel insurance considerations for my destination and trip length.' },
+];
+
 const TripPilotChat = ({
   initialPrompt = '',
   initialTripId = null,
@@ -40,11 +48,14 @@ const TripPilotChat = ({
   compact = false,
   className = '',
   title = 'AI Travel Copilot Workspace',
+  variant = 'standard',
 }) => {
+  const isLanding = variant === 'landing';
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { addToast } = useToast();
-  const chatBottomRef = useRef(null);
+  const chatContainerRef = useRef(null);
+  const pendingResumeStarted = useRef(false);
 
   const [promptInput, setPromptInput] = useState(initialPrompt);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -61,20 +72,71 @@ const TripPilotChat = ({
     },
   ]);
 
-  // Restore pending session if exists
+  // Restore the guest conversation and finish it under the signed-in user's account.
   useEffect(() => {
     const pending = getPendingTripSession();
-    if (pending && pending.chatLog && pending.chatLog.length > 0) {
-      setChatLog(pending.chatLog);
-      if (pending.sessionId) setSessionId(pending.sessionId);
-      if (pending.activeTrip) setActiveTrip(pending.activeTrip);
-    }
-  }, []);
+    if (!pending) return;
 
-  // Auto-scroll chat to bottom
+    if (pending.chatLog?.length > 0) {
+      setChatLog(pending.chatLog.map((message) => ({
+        ...message,
+        text: message.text ?? message.content ?? '',
+        time: message.time || (message.timestamp
+          ? new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : ''),
+      })));
+    }
+    if (pending.sessionId) setSessionId(pending.sessionId);
+    if (pending.activeTrip && !isAuthenticated) setActiveTrip(pending.activeTrip);
+
+    if (!isAuthenticated || !pending.lastPrompt || pendingResumeStarted.current) return;
+    pendingResumeStarted.current = true;
+    setIsExecuting(true);
+
+    const resumePendingPlan = async () => {
+      try {
+        let currentSessionId = pending.sessionId;
+        if (!currentSessionId) {
+          const sessionResponse = await aiService.createOrGetSession();
+          currentSessionId = sessionResponse?.data?.session?.sessionId;
+        }
+        if (!currentSessionId) throw new Error('Could not restore the planner session.');
+
+        setSessionId(currentSessionId);
+        const response = await aiService.sendMessage(currentSessionId, pending.lastPrompt);
+        const result = response?.data?.result || response?.result || response?.data || {};
+        const summary = result.copilotMessage || result.message || 'Your trip plan has been updated.';
+
+        if (result.trip) {
+          setActiveTrip(result.trip);
+          clearPendingTripSession();
+        }
+        if (result.itinerary) setActiveItinerary(result.itinerary);
+        setChatLog((previous) => [
+          ...previous,
+          {
+            sender: 'assistant',
+            text: result.trip ? `${summary} Your trip is saved to your account.` : summary,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            metadata: result,
+          },
+        ]);
+      } catch (error) {
+        console.error('[TripPilotChat Resume Error]:', error);
+        setPromptInput(pending.lastPrompt);
+        addToast('Your saved trip details are still here. Please send the prompt again to finish planning.', 'error');
+      } finally {
+        setIsExecuting(false);
+      }
+    };
+
+    resumePendingPlan();
+  }, [isAuthenticated, addToast]);
+
+  // Auto-scroll chat transcript internally (never scrolls window)
   useEffect(() => {
-    if (chatLog.length > 1) {
-      chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [chatLog, isExecuting]);
 
@@ -166,10 +228,15 @@ const TripPilotChat = ({
   };
 
   return (
-    <div
-      className={`bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl p-4 sm:p-6 rounded-3xl shadow-2xl border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white max-w-4xl mx-auto text-left transition-all space-y-4 ${className}`}
-    >
+    <div className={`bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-xl shadow-soft border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white max-w-4xl mx-auto text-left space-y-4 ${className}`}>
       {/* Workspace Header */}
+      {isLanding ? (
+        <div className="border-b border-slate-100 pb-4 dark:border-slate-800">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-teal-800 dark:text-teal-300">TripPilot planner</p>
+          <h2 className="planner-prompt-title mt-2 text-2xl font-bold tracking-tight text-slate-950 dark:text-white">Where would you like to go?</h2>
+          <p className="mt-1 text-sm leading-5 text-slate-500 dark:text-slate-400">Start with a destination, a few dates, or a question.</p>
+        </div>
+      ) : (
       <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <div className="p-2 rounded-xl bg-secondary-500/10 text-secondary-500">
@@ -179,47 +246,75 @@ const TripPilotChat = ({
             <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
               {title}
             </h3>
-            <p className="text-[11px] text-slate-400">Ask anything, plan routes, or modify active trips</p>
+            <p className="text-[11px] text-slate-400">Ask for a destination, adjust dates, or change an active trip</p>
           </div>
         </div>
 
         {!isAuthenticated && (
           <div className="hidden sm:flex items-center gap-2">
-            <span className="text-[10px] text-amber-500 font-semibold flex items-center gap-1 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
-              <LogIn className="w-3 h-3" /> Guest Mode (State Auto-Saved)
+            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1 bg-amber-500/10 px-2.5 py-1 rounded-md border border-amber-500/20">
+              <LogIn className="w-3 h-3" /> Guest session saved locally
             </span>
           </div>
         )}
       </div>
+      )}
 
       {/* Suggested Prompts Strip */}
       <div className="space-y-1.5">
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-          Suggested Prompts — Click to launch AI planning:
+        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+          {isLanding ? 'Try a prompt' : 'Suggested prompts'}
         </span>
         <div className="flex flex-wrap gap-1.5">
-          {DEFAULT_SUGGESTED_PROMPTS.map((promptText, idx) => (
+          {(isLanding ? LANDING_PROMPTS : DEFAULT_SUGGESTED_PROMPTS).map((promptText, idx) => (
             <button
               key={idx}
               type="button"
               onClick={() => handleSendMessage(promptText)}
               disabled={isExecuting}
-              className="px-2.5 py-1 rounded-xl text-xs font-medium bg-slate-100 dark:bg-slate-800 hover:bg-secondary-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 transition flex items-center gap-1 text-left"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#f5f6f2] dark:bg-slate-800 hover:bg-teal-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 transition-colors duration-200 flex items-center gap-1 text-left"
             >
-              <Sparkles className="w-3 h-3 text-secondary-500 shrink-0" />
               <span>{promptText}</span>
             </button>
           ))}
         </div>
       </div>
 
+      {/* One-step planning entry points, matching the reference workflow */}
+      {!isLanding && <div className="space-y-1.5">
+        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+          Start with one thing
+        </span>
+        <div className="flex flex-wrap gap-1.5">
+          {STARTER_ACTIONS.map(({ label, prompt }) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => handleSendMessage(prompt)}
+              disabled={isExecuting}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-900 hover:bg-secondary-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors duration-200 disabled:opacity-50"
+            >
+              {label}
+            </button>
+          ))}
+          <Link
+            to="/contact"
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-secondary-700 dark:text-secondary-300 border border-secondary-200 dark:border-secondary-800 hover:bg-secondary-50 dark:hover:bg-secondary-950/30 transition-colors duration-200"
+          >
+            Talk to an expert
+          </Link>
+        </div>
+      </div>}
+
       {/* Chat Stream History */}
-      <div
-        className={`bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 overflow-y-auto space-y-4 text-xs ${
+      {(!isLanding || chatLog.length > 1) && <div
+        ref={chatContainerRef}
+        className={`bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800/80 rounded-xl p-4 overflow-y-auto space-y-4 text-sm ${
           compact ? 'max-h-[280px]' : 'max-h-[380px]'
         }`}
       >
         {chatLog.map((msg, idx) => {
+          if (isLanding && idx === 0) return null;
           const isUser = msg.sender === 'user';
           const meta = msg.metadata;
           const sData = meta?.structuredData;
@@ -227,8 +322,8 @@ const TripPilotChat = ({
           return (
             <div key={idx} className={`flex items-start gap-2.5 ${isUser ? 'flex-row-reverse' : ''}`}>
               <div
-                className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 text-white font-bold text-xs ${
-                  isUser ? 'bg-secondary-600' : 'bg-gradient-to-tr from-primary-900 to-secondary-600'
+                className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 font-bold text-xs ${
+                  isUser ? 'bg-secondary-600 text-white' : 'bg-slate-900 text-secondary-400 border border-slate-700/80 shadow-sm'
                 }`}
               >
                 {isUser ? 'U' : <Bot className="w-4 h-4" />}
@@ -248,7 +343,7 @@ const TripPilotChat = ({
                   <div className="mt-3 p-3 rounded-xl bg-secondary-500/10 border border-secondary-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div>
                       <span className="text-[11px] font-bold text-secondary-600 dark:text-secondary-400 block">
-                        🎉 Active Trip Blueprint: {meta.trip.title}
+                        Active Trip Blueprint: {meta.trip.title}
                       </span>
                       <span className="text-[10px] text-slate-500">
                         {meta.trip.destinations?.[0]?.name} · {meta.trip.dates?.durationDays || 5} Days ·{' '}
@@ -275,14 +370,14 @@ const TripPilotChat = ({
                         className="bg-slate-50 dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center text-[11px]"
                       >
                         <div>
-                          <span className="font-bold text-slate-900 dark:text-white">✈️ {fl.airline}</span>
+                          <span className="font-bold text-slate-900 dark:text-white">{fl.airline}</span>
                           <span className="text-[9px] text-slate-400 block">
                             {fl.departureAirport} → {fl.arrivalAirport} ({fl.cabinClass || 'Economy'})
                           </span>
                         </div>
                         <div className="text-right">
                           <span className="font-bold text-emerald-600 dark:text-emerald-400 block">
-                            ₹{(fl.price?.amount || fl.price || 14500).toLocaleString()}
+                            {fl.price?.amount || fl.price ? `₹${(fl.price?.amount || fl.price).toLocaleString()}` : 'Price unavailable'}
                           </span>
                           <button
                             type="button"
@@ -291,7 +386,8 @@ const TripPilotChat = ({
                                 type: 'Flight',
                                 title: `${fl.airline} Flight`,
                                 provider: fl.providerName || 'Skyscanner / Cleartrip',
-                                price: `₹${(fl.price?.amount || fl.price || 14500).toLocaleString()}`,
+                                price: fl.price?.amount || fl.price ? `₹${(fl.price?.amount || fl.price).toLocaleString()}` : 'Price unavailable',
+                                bookingUrl: fl.bookingUrl || '',
                               })
                             }
                             className="text-[9px] text-secondary-600 dark:text-secondary-400 font-bold hover:underline"
@@ -316,12 +412,12 @@ const TripPilotChat = ({
                         className="bg-slate-50 dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center text-[11px]"
                       >
                         <div>
-                          <span className="font-bold text-slate-900 dark:text-white">🏨 {ht.name}</span>
+                          <span className="font-bold text-slate-900 dark:text-white">{ht.name}</span>
                           <span className="text-[9px] text-slate-400 block">{ht.neighborhood || ht.address}</span>
                         </div>
                         <div className="text-right">
                           <span className="font-bold text-emerald-600 dark:text-emerald-400 block">
-                            ₹{(ht.pricePerNight?.amount || ht.pricePerNight || 4500).toLocaleString()}/nt
+                            {ht.pricePerNight?.amount || ht.pricePerNight ? `₹${(ht.pricePerNight?.amount || ht.pricePerNight).toLocaleString()}/nt` : 'Price unavailable'}
                           </span>
                           <button
                             type="button"
@@ -330,7 +426,8 @@ const TripPilotChat = ({
                                 type: 'Hotel',
                                 title: ht.name,
                                 provider: ht.providerName || 'Booking.com',
-                                price: `₹${(ht.pricePerNight?.amount || ht.pricePerNight || 4500).toLocaleString()}/nt`,
+                                price: ht.pricePerNight?.amount || ht.pricePerNight ? `₹${(ht.pricePerNight?.amount || ht.pricePerNight).toLocaleString()}/nt` : 'Price unavailable',
+                                bookingUrl: ht.bookingUrl || '',
                               })
                             }
                             className="text-[9px] text-secondary-600 dark:text-secondary-400 font-bold hover:underline"
@@ -347,7 +444,7 @@ const TripPilotChat = ({
                 {sData?.isRoadTrip && (
                   <div className="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] space-y-1">
                     <span className="font-bold text-amber-600 dark:text-amber-400 block">
-                      🚗 Road Trip Route Overview
+                      Road Trip Route Overview
                     </span>
                     <span>
                       Total Distance: {sData.totalDistanceKm} km · Driving Time: ~{sData.totalDrivingHours} hrs ·
@@ -365,11 +462,10 @@ const TripPilotChat = ({
         {isExecuting && (
           <div className="flex items-center gap-2 text-xs text-slate-500 py-2">
             <RefreshCw className="w-4 h-4 animate-spin text-secondary-500" />
-            <span>TripPilot AI is researching destinations, flight corridors & hotel fit...</span>
+            <span>Looking up destinations, flights, and stays...</span>
           </div>
         )}
-        <div ref={chatBottomRef} />
-      </div>
+      </div>}
 
       {/* Prominent Chat Input Form */}
       <form
@@ -377,14 +473,20 @@ const TripPilotChat = ({
           e.preventDefault();
           handleSendMessage();
         }}
-        className="flex items-center gap-2 pt-1"
+        className={`${isLanding ? 'flex flex-col gap-2 border border-slate-200 bg-white p-2 focus-within:border-teal-700/60 dark:border-slate-700 dark:bg-slate-900' : 'flex items-center gap-2 pt-1'}`}
       >
-        <input
-          type="text"
+        <textarea
+          rows={isLanding ? 2 : 1}
           value={promptInput}
           onChange={(e) => setPromptInput(e.target.value)}
-          placeholder="Ask TripPilot anything... e.g. 'Plan 5 days in Delhi' or 'Make it cheaper'..."
-          className="flex-1 px-4 py-3 text-sm rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-secondary-500 transition font-medium"
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.preventDefault();
+              handleSendMessage();
+            }
+          }}
+          placeholder={isLanding ? 'Example: 5 days in Kyoto, flying from Mumbai, under ₹90,000' : "Ask TripPilot anything... e.g. 'Plan 5 days in Delhi' or 'Make it cheaper'..."}
+          className={`${isLanding ? 'w-full resize-none border-0 bg-transparent px-3 py-2 text-sm leading-6' : 'flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium'} text-slate-900 dark:bg-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-0`}
         />
         <Button
           type="submit"
@@ -392,19 +494,19 @@ const TripPilotChat = ({
           size="md"
           icon={Send}
           disabled={isExecuting || !promptInput.trim()}
-          className="px-5 py-3 shadow-lg shadow-secondary-900/30"
+          className={`${isLanding ? 'self-end rounded-lg bg-teal-700 px-5 py-2.5 hover:bg-teal-800' : 'px-5 py-3'}`}
         >
-          Send
+          {isLanding ? 'Plan this trip' : 'Send'}
         </Button>
       </form>
 
       {/* Guest Mode Auth Prompt Strip */}
       {!isAuthenticated && chatLog.length > 2 && (
-        <div className="p-3 rounded-2xl bg-gradient-to-r from-secondary-900 to-slate-900 text-white flex flex-col sm:flex-row items-center justify-between gap-3 text-xs border border-secondary-500/30">
+        <div className="p-3 rounded-xl bg-slate-900 text-white flex flex-col sm:flex-row items-center justify-between gap-3 text-xs border border-slate-700">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
             <span>
-              Your conversation & trip requirements are automatically preserved. Sign in or register to permanently sync to your account!
+              This conversation is stored on this device. Sign in to save it to your account.
             </span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -425,18 +527,18 @@ const TripPilotChat = ({
       {/* Provider Handoff Modal */}
       {handoffModalItem && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-modal space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
               <span className="text-xs font-bold uppercase text-secondary-600 flex items-center gap-1">
-                <ExternalLink className="w-4 h-4" /> Live Provider Handoff
+                <ExternalLink className="w-4 h-4" /> Provider Booking Link
               </span>
               <button onClick={() => setHandoffModalItem(null)} className="text-slate-400 hover:text-slate-600">
-                ✕
+                <X className="h-4 w-4" />
               </button>
             </div>
             <div>
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">{handoffModalItem.title}</h3>
-              <p className="text-xs text-slate-500">Live price verification via provider partner</p>
+              <p className="text-xs text-slate-500">Review the provider's current availability and final price before booking.</p>
             </div>
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 text-xs space-y-2">
               <div className="flex justify-between">
@@ -444,21 +546,27 @@ const TripPilotChat = ({
                 <span className="font-bold text-slate-900 dark:text-white">{handoffModalItem.provider}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Estimated Price:</span>
+                <span className="text-slate-500">Price shown:</span>
                 <span className="font-bold text-emerald-600">{handoffModalItem.price}</span>
               </div>
             </div>
             <div className="space-y-2">
-              <a
-                href="https://www.booking.com"
-                target="_blank"
-                rel="noreferrer"
-                onClick={() => setHandoffModalItem(null)}
-                className="w-full py-2.5 rounded-xl bg-secondary-600 hover:bg-secondary-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition"
-              >
-                <span>Proceed to {handoffModalItem.provider}</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
+              {handoffModalItem.bookingUrl ? (
+                <a
+                  href={handoffModalItem.bookingUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => setHandoffModalItem(null)}
+                  className="w-full py-2.5 rounded-xl bg-secondary-600 hover:bg-secondary-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition"
+                >
+                  <span>Continue to {handoffModalItem.provider}</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              ) : (
+                <p className="rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                  A booking link is not available for this result. Search the provider directly and confirm its current price and availability.
+                </p>
+              )}
               <button
                 type="button"
                 onClick={() => setHandoffModalItem(null)}

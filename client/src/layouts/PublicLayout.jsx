@@ -5,7 +5,7 @@ import Footer from '../components/layout/Footer';
 
 const PublicLayout = () => {
   return (
-    <div className="min-h-screen flex flex-col bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 transition-colors">
+    <div className="scrapbook-bg min-h-screen flex flex-col text-stone-900 dark:bg-background-dark dark:text-stone-100 transition-colors">
       <Navbar />
       <main className="flex-grow">
         <Outlet />

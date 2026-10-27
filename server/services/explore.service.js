@@ -4,6 +4,7 @@ const Activity = require('../models/Activity');
 const Trip = require('../models/Trip');
 const Wishlist = require('../models/Wishlist');
 const userPreferenceService = require('./userPreference.service');
+const imageService = require('./image.service');
 
 class ExploreService {
   /**
@@ -127,6 +128,24 @@ class ExploreService {
         },
       ];
     }
+
+    // Database records can contain a shared placeholder cover image. Replace only
+    // duplicates with destination-specific provider or curated photos.
+    const usedCoverImages = new Set();
+    destinations = await Promise.all(destinations.map(async (destination, index) => {
+      const currentImage = destination.coverImage || destination.imageUrl;
+      if (currentImage && !usedCoverImages.has(currentImage)) {
+        usedCoverImages.add(currentImage);
+        return destination;
+      }
+
+      const destinationQuery = [destination.name, destination.city, destination.country]
+        .filter(Boolean)
+        .join(', ');
+      const authenticImage = await imageService.fetchPhoto(destinationQuery, destination.name, index);
+      usedCoverImages.add(authenticImage);
+      return { ...destination, coverImage: authenticImage, imageSource: 'destination-photo-provider' };
+    }));
 
     // Extract categories & tags from user's previous trips & wishlist
     const prevCategories = new Set();

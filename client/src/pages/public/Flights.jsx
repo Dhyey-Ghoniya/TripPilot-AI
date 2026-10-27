@@ -27,6 +27,13 @@ import { useToast } from '../../context/ToastContext';
 import flightService from '../../services/flightService';
 import tripService from '../../services/tripService';
 
+const getDefaultDepartureDate = () => {
+  const date = new Date();
+  date.setDate(date.getDate() + 14);
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return localDate.toISOString().slice(0, 10);
+};
+
 const Flights = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
@@ -34,7 +41,7 @@ const Flights = () => {
 
   const [origin, setOrigin] = useState('AMD');
   const [destination, setDestination] = useState('DXB');
-  const [departureDate, setDepartureDate] = useState('2026-10-15');
+  const [departureDate, setDepartureDate] = useState(getDefaultDepartureDate);
   const [returnDate, setReturnDate] = useState('');
   const [isRoundTrip, setIsRoundTrip] = useState(false);
   const [cabinClass, setCabinClass] = useState('economy');
@@ -105,7 +112,7 @@ const Flights = () => {
     if (!selectedTripId || !selectedFlightForAttach) return;
     try {
       await flightService.attachFlightToTrip(selectedTripId, selectedFlightForAttach);
-      addToast(`Attached ${selectedFlightForAttach.airline} flight to trip! Budget updated. ✈️`, 'success');
+      addToast(`Attached ${selectedFlightForAttach.airline} flight to trip! Budget updated.`, 'success');
       setIsAttachModalOpen(false);
       navigate(`/trips/${selectedTripId}`);
     } catch (err) {
@@ -128,30 +135,24 @@ const Flights = () => {
     });
 
   return (
-    <div className="space-y-12 pb-16">
+    <div className="page-shell space-y-10 pb-16 pt-8">
       {/* Header Banner & Search Container */}
-      <section className="relative pt-12 pb-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-primary-950 via-primary-900 to-slate-900 text-white rounded-3xl shadow-xl overflow-hidden border border-slate-800">
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#14b8a6_1px,transparent_1px)] [background-size:16px_16px]" />
-
+      <section className="relative pt-10 pb-12 px-4 sm:px-8 bg-slate-950 text-white rounded-xl overflow-hidden border border-slate-800">
         <div className="relative z-10 max-w-4xl mx-auto text-center space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary-500/20 border border-secondary-400/30 text-secondary-300 text-xs font-semibold backdrop-blur-md">
+          <p className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-secondary-900/50 border border-secondary-700/40 text-secondary-200 text-xs font-semibold">
             <Sparkles className="w-3.5 h-3.5 text-secondary-400" />
-            <span>AI Flight Intelligence & Provider Matrix</span>
-          </div>
-
-          <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white">
-            Compare Flight Providers, <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary-400 via-teal-300 to-amber-300">
-              Engineered For Your Journey.
-            </span>
-          </h1>
-
-          <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto font-light leading-relaxed">
-            Compare fares across Ixigo, MakeMyTrip, Cleartrip, Skyscanner, Trip.com, and Expedia with official booking redirection.
+            Flight search
           </p>
 
-          {/* Interactive Search Box */}
-          <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl p-5 sm:p-7 rounded-2xl shadow-2xl border border-white/20 text-slate-900 dark:text-white max-w-4xl mx-auto text-left mt-8">
+          <h1 className="font-display text-3xl sm:text-5xl font-bold tracking-tight text-white">
+            Compare fares by date, cabin, and stops
+          </h1>
+
+          <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto leading-relaxed">
+            Search across Ixigo, MakeMyTrip, Cleartrip, Skyscanner, Trip.com, and Expedia, then open the booking site for the fare you pick.
+          </p>
+
+          <div className="bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-xl shadow-card border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white max-w-4xl mx-auto text-left mt-8">
             <div className="flex gap-4 border-b border-slate-200 dark:border-slate-800 pb-3 mb-4 text-xs font-bold">
               <button
                 type="button"

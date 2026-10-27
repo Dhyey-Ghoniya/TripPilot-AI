@@ -94,17 +94,24 @@ class HotelService {
       };
     });
 
-    // Save search doc in MongoDB
-    const hotelSearchDoc = new HotelSearch({
-      userId: userId || null,
-      tripId: formattedParams.tripId || null,
-      searchParams: formattedParams,
-      results: scoredResults,
-    });
-    await hotelSearchDoc.save();
+    // Persist search history when MongoDB is available, but do not discard valid
+    // provider results when the database is temporarily unreachable.
+    let hotelSearchId = null;
+    try {
+      const hotelSearchDoc = new HotelSearch({
+        userId: userId || null,
+        tripId: formattedParams.tripId || null,
+        searchParams: formattedParams,
+        results: scoredResults,
+      });
+      await hotelSearchDoc.save();
+      hotelSearchId = hotelSearchDoc._id;
+    } catch (error) {
+      console.warn('[HotelService] Search history persistence unavailable:', error.message);
+    }
 
     return {
-      searchId: hotelSearchDoc._id,
+      searchId: hotelSearchId,
       searchParams: formattedParams,
       totalResults: scoredResults.length,
       results: scoredResults,
@@ -119,9 +126,11 @@ class HotelService {
     const hotelLng = hotel.coordinates?.lng || 55.2744;
 
     // Center of destination or default coordinates
-    const centerLat = trip?.destination?.coordinates?.lat || 25.2048;
-    const centerLng = trip?.destination?.coordinates?.lng || 55.2708;
-    const airportDistanceKm = this.calculateDistanceKm(hotelLat, hotelLng, centerLat + 0.05, centerLng + 0.05);
+    const centerLat = trip?.destinations?.[0]?.coordinates?.lat;
+    const centerLng = trip?.destinations?.[0]?.coordinates?.lng;
+    const airportDistanceKm = Number.isFinite(centerLat) && Number.isFinite(centerLng)
+      ? this.calculateDistanceKm(hotelLat, hotelLng, centerLat + 0.05, centerLng + 0.05)
+      : null;
 
     // Extract Day 1 & Day 2 activity locations from trip itinerary if available
     let day1Dist = 1.2;
@@ -132,10 +141,10 @@ class HotelService {
       const day2 = trip.itineraryId.days.find((d) => d.dayNumber === 2);
 
       if (day1 && day1.activities && day1.activities.length > 0) {
-        day1Dist = this.calculateDistanceKm(hotelLat, hotelLng, centerLat + 0.01, centerLng + 0.01);
+        if (Number.isFinite(centerLat) && Number.isFinite(centerLng)) day1Dist = this.calculateDistanceKm(hotelLat, hotelLng, centerLat + 0.01, centerLng + 0.01);
       }
       if (day2 && day2.activities && day2.activities.length > 0) {
-        day2Dist = this.calculateDistanceKm(hotelLat, hotelLng, centerLat - 0.02, centerLng + 0.02);
+        if (Number.isFinite(centerLat) && Number.isFinite(centerLng)) day2Dist = this.calculateDistanceKm(hotelLat, hotelLng, centerLat - 0.02, centerLng + 0.02);
       }
     }
 
@@ -177,7 +186,7 @@ class HotelService {
       distanceToDay2Km: day2Dist,
       distanceToDay2Text: `${day2Dist} km from Day 2 activities`,
       airportDistanceKm: airportDistanceKm,
-      airportDistanceText: `${airportDistanceKm} km from Airport / City Hub`,
+      airportDistanceText: airportDistanceKm === null ? 'Airport distance unavailable without verified destination coordinates' : `${airportDistanceKm} km from Airport / City Hub`,
       estimatedTransportImpact: transportImpact,
       estimatedDailyTransportCost,
       areaSuitability,
@@ -200,8 +209,8 @@ class HotelService {
     const pricePerNight = Number(hotelData.pricePerNight?.amount || hotelData.pricePerNight || 0);
     const totalCost = Number(hotelData.totalCost || pricePerNight * nights);
 
-    const lat = hotelData.coordinates?.lat || trip.destinations?.[0]?.coordinates?.lat || 25.1972;
-    const lng = hotelData.coordinates?.lng || trip.destinations?.[0]?.coordinates?.lng || 55.2744;
+    const lat = hotelData.coordinates?.lat || trip.destinations?.[0]?.coordinates?.lat || 0;
+    const lng = hotelData.coordinates?.lng || trip.destinations?.[0]?.coordinates?.lng || 0;
 
     // Attach hotel object to trip
     trip.hotels = [{
@@ -274,7 +283,7 @@ class HotelService {
       trip = await Trip.findById(tripId).populate('itineraryId');
     }
 
-    const destination = trip?.destination?.name || 'Dubai';
+    const destination = trip?.destinations?.[0]?.name || 'Destination';
 
     // 1. "Find a hotel near my Day N activities" (Dynamic for any day)
     const dayMatch = prompt.match(/day\s*(\d+)/i);
@@ -501,4 +510,3 @@ class HotelService {
 }
 
 module.exports = new HotelService();
-

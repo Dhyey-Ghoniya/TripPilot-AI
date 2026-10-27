@@ -1,26 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import {
-  Navigation,
-  Building2,
-  Plane,
-  Layers,
-  Sparkles,
-  Footprints,
-  Car,
-  Bus,
-  Train,
-  Bike,
-  Utensils,
-  MapPin,
-  Zap,
-} from 'lucide-react';
+import { Building2, Car, Footprints, MapPin, Navigation, Sparkles, Train } from 'lucide-react';
 import Card from '../common/Card';
 import Badge from '../ui/Badge';
 import mapService from '../../services/mapService';
 
-// Fix Leaflet default icon path assets
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -29,251 +14,159 @@ L.Icon.Default.mergeOptions({
 });
 
 const TRANSPORT_MODES = [
-  { mode: 'Walking', icon: Footprints, speed: '4.5 km/h' },
-  { mode: 'Taxi', icon: Car, speed: '35 km/h' },
-  { mode: 'Car', icon: Car, speed: '38 km/h' },
-  { mode: 'Bus', icon: Bus, speed: '22 km/h' },
-  { mode: 'Metro', icon: Train, speed: '42 km/h' },
-  { mode: 'Train', icon: Train, speed: '55 km/h' },
-  { mode: 'Bike', icon: Bike, speed: '15 km/h' },
+  { mode: 'Walking', icon: Footprints },
+  { mode: 'Taxi', icon: Car },
+  { mode: 'Car', icon: Car },
+  { mode: 'Metro', icon: Train },
+  { mode: 'Train', icon: Train },
 ];
 
-const MapView = ({ trip, itinerary, selectedDay = 1 }) => {
+const isValidCoordinate = (coordinates) => (
+  Number.isFinite(coordinates?.lat) && Number.isFinite(coordinates?.lng) && (coordinates.lat !== 0 || coordinates.lng !== 0)
+);
+
+const markerColor = (marker) => marker.category === 'hotel' ? '#d97706' : marker.category === 'restaurant' ? '#ea580c' : '#0d9488';
+const routeColor = (mode) => mode === 'Walking' ? '#0d9488' : mode === 'Metro' ? '#2563eb' : mode === 'Train' ? '#7c3aed' : mode === 'Car' ? '#ea580c' : '#0891b2';
+
+const MapView = ({ trip, itinerary, selectedDay = 1, activeMode: selectedMode, onModeChange, onTelemetryChange }) => {
   const mapContainerRef = useRef(null);
   const leafletMapInstanceRef = useRef(null);
-
-  const destName = trip?.destinations?.[0]?.name || trip?.destination?.name || 'Destination';
-  const originName = trip?.origin?.name || trip?.origin?.city || 'Origin';
-  const centerLat = trip?.destinations?.[0]?.coordinates?.lat || trip?.destination?.coordinates?.lat || 20.5937;
-  const centerLng = trip?.destinations?.[0]?.coordinates?.lng || trip?.destination?.coordinates?.lng || 78.9629;
-
-  const [activeMode, setActiveMode] = useState(trip?.transport?.mode || 'Taxi');
+  const [localMode, setLocalMode] = useState(trip?.transportSegments?.[0]?.mode || 'Taxi');
+  const activeMode = selectedMode || localMode;
   const [loading, setLoading] = useState(false);
   const [telemetry, setTelemetry] = useState(null);
-  const [optimizationMsg, setOptimizationMsg] = useState('');
+  const [mapError, setMapError] = useState('');
 
-  const currentDayObj = itinerary?.days?.find((d) => d.dayNumber === selectedDay) || itinerary?.days?.[0];
-  const activities = currentDayObj?.activities || [];
+  const destName = trip?.destinations?.[0]?.name || trip?.destination?.name || 'Destination';
+  const currentDay = itinerary?.days?.find((day) => day.dayNumber === selectedDay) || itinerary?.days?.[0];
+  const activities = currentDay?.activities || [];
 
-  // Fetch telemetry
-  const fetchWorkspaceMap = async () => {
-    if (!trip?._id) return;
-    setLoading(true);
-    try {
-      const res = await mapService.getTripMapWorkspace(trip._id, selectedDay);
-      if (res.data) {
-        setTelemetry(res.data);
-      }
-    } catch (err) {
-      console.error('Error fetching trip map telemetry:', err);
-    } finally {
-      setLoading(false);
-    }
+  const chooseMode = (mode) => {
+    setLocalMode(mode);
+    onModeChange?.(mode);
   };
 
   useEffect(() => {
-    fetchWorkspaceMap();
+    let isMounted = true;
+    const loadMap = async () => {
+      if (!trip?._id) return;
+      setLoading(true);
+      try {
+        const response = await mapService.getTripMapWorkspace(trip._id, selectedDay, activeMode);
+        if (isMounted) {
+          const nextTelemetry = response?.data || null;
+          setTelemetry(nextTelemetry);
+          onTelemetryChange?.(nextTelemetry);
+          setMapError(response?.data?.unavailableReason || '');
+        }
+      } catch (error) {
+        if (isMounted) setMapError('The map could not load right now. Try again after the trip has verified location data.');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    loadMap();
+    return () => { isMounted = false; };
   }, [trip?._id, selectedDay, activeMode]);
 
-  // Leaflet Interactive Map Rendering Effect
   useEffect(() => {
-    if (!mapContainerRef.current) return;
+    if (!mapContainerRef.current || !isValidCoordinate(telemetry?.mapCenter)) return undefined;
+    if (leafletMapInstanceRef.current) leafletMapInstanceRef.current.remove();
 
-    // Clean up existing map instance if any
-    if (leafletMapInstanceRef.current) {
-      leafletMapInstanceRef.current.remove();
-      leafletMapInstanceRef.current = null;
-    }
-
-    // Initialize Leaflet Map centered on destination coordinates
-    const map = L.map(mapContainerRef.current, {
-      center: [centerLat, centerLng],
-      zoom: 12,
-      zoomControl: true,
-    });
+    const map = L.map(mapContainerRef.current, { center: [telemetry.mapCenter.lat, telemetry.mapCenter.lng], zoom: 12, zoomControl: true });
     leafletMapInstanceRef.current = map;
-
-    // Add Real OpenStreetMap Tile Layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
 
-    const mapWaypoints = [];
-
-    // Hotel Marker Icon
-    const hotelLat = trip?.hotel?.coordinates?.lat || centerLat + 0.005;
-    const hotelLng = trip?.hotel?.coordinates?.lng || centerLng - 0.005;
-    const hotelName = trip?.hotel?.name || `Stay in ${destName}`;
-
-    const hotelIcon = L.divIcon({
-      className: 'custom-leaflet-marker',
-      html: `<div style="background-color: #f59e0b; color: white; width: 32px; height: 32px; borderRadius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid white;">🏨</div>`,
-      iconSize: [32, 32],
-      iconAnchor: [16, 16],
-    });
-
-    const hotelMarker = L.marker([hotelLat, hotelLng], { icon: hotelIcon }).addTo(map);
-    hotelMarker.bindPopup(`<b>🏨 ${hotelName}</b><br/>Overnight Base for ${destName}`);
-    mapWaypoints.push([hotelLat, hotelLng]);
-
-    // Activity Markers & Polyline Points
-    activities.forEach((act, idx) => {
-      const actLat = act.coordinates?.lat || centerLat + (idx * 0.006 - 0.012);
-      const actLng = act.coordinates?.lng || centerLng + (idx * 0.007 - 0.014);
-      const isFood = (act.category || '').toLowerCase().includes('food') || (act.activity || '').toLowerCase().includes('dining');
-
-      const actIcon = L.divIcon({
-        className: 'custom-leaflet-marker',
-        html: `<div style="background-color: ${isFood ? '#f97316' : '#0d9488'}; color: white; width: 30px; height: 30px; borderRadius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid white;">${isFood ? '🍽️' : idx + 1}</div>`,
+    const waypoints = [];
+    (telemetry.markers || []).filter((marker) => isValidCoordinate(marker.coordinates)).forEach((marker, index) => {
+      const color = markerColor(marker);
+      const icon = marker.category === 'hotel' ? 'H' : String(marker.sequenceOrder || index + 1);
+      const markerIcon = L.divIcon({
+        className: 'trippilot-map-marker',
+        html: `<div style="background:${color};color:#fff;width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;border:2px solid #fff;box-shadow:0 3px 8px rgba(15,23,42,.28)">${icon}</div>`,
         iconSize: [30, 30],
         iconAnchor: [15, 15],
       });
-
-      const marker = L.marker([actLat, actLng], { icon: actIcon }).addTo(map);
-      marker.bindPopup(`
-        <div style="font-family: sans-serif; font-size: 12px;">
-          <b style="color: #0d9488;">Day ${selectedDay} #${idx + 1}: ${act.activity || act.title}</b><br/>
-          <span>📍 ${act.location || destName} (${act.timeSlot || 'Slot'})</span><br/>
-          <span>⏱️ Duration: ${act.durationMinutes || 90} mins | Cost: ₹${act.estimatedCost || 0}</span>
-        </div>
-      `);
-
-      mapWaypoints.push([actLat, actLng]);
+      const leafletMarker = L.marker([marker.coordinates.lat, marker.coordinates.lng], { icon: markerIcon }).addTo(map);
+      leafletMarker.bindPopup(`<strong>${marker.name || 'Trip stop'}</strong><br>${marker.location || marker.address || marker.category || ''}`);
+      waypoints.push([marker.coordinates.lat, marker.coordinates.lng]);
     });
 
-    // Draw Real Route Polyline
-    if (mapWaypoints.length > 1) {
-      L.polyline(mapWaypoints, {
-        color: '#0d9488',
-        weight: 4,
-        opacity: 0.85,
-        dashArray: '6, 8',
-      }).addTo(map);
+      (telemetry.routeSegments || []).forEach((segment) => {
+      const points = (segment.pathCoordinates || []).filter(isValidCoordinate).map((point) => [point.lat, point.lng]);
+        if (points.length > 1) L.polyline(points, {
+          color: routeColor(segment.mode || telemetry.activeMode),
+          weight: 5,
+          opacity: 0.95,
+          dashArray: segment.mode === 'Walking' ? '7 8' : undefined,
+        }).addTo(map);
+    });
 
-      // Fit map view to waypoints bounds
-      map.fitBounds(L.latLngBounds(mapWaypoints), { padding: [50, 50] });
-    }
-
+    if (waypoints.length > 1 && !(telemetry.routeSegments || []).length) map.fitBounds(L.latLngBounds(waypoints), { padding: [50, 50] });
     return () => {
       if (leafletMapInstanceRef.current) {
         leafletMapInstanceRef.current.remove();
         leafletMapInstanceRef.current = null;
       }
     };
-  }, [trip, itinerary, selectedDay]);
+  }, [telemetry]);
 
   const handleOptimizeRoute = async () => {
-    if (!activities || activities.length === 0) return;
+    const waypoints = activities.filter((activity) => isValidCoordinate(activity.coordinates)).map((activity) => ({ name: activity.activity, coordinates: activity.coordinates }));
+    if (waypoints.length < 2) {
+      setMapError('Route optimization needs at least two activities with verified coordinates.');
+      return;
+    }
     setLoading(true);
     try {
-      const waypoints = [
-        { name: trip?.hotel?.name || 'Stay Location', coordinates: trip?.hotel?.coordinates || { lat: centerLat, lng: centerLng } },
-        ...activities.map((a, idx) => ({
-          name: a.activity || a.title,
-          coordinates: { lat: centerLat + (idx % 2 === 0 ? 0.015 * (idx + 1) : -0.012 * (idx + 1)), lng: centerLng + (idx % 2 === 0 ? -0.01 * (idx + 1) : 0.018 * (idx + 1)) },
-        })),
-      ];
-
-      const res = await mapService.optimizeTripRoute(waypoints);
-      if (res.data) {
-        if (res.data.hasInefficiency) {
-          setOptimizationMsg(`Route optimized! Saved ~${res.data.savedDistanceKm} km and ~${res.data.savedMinutes} mins of commuting time.`);
-        } else {
-          setOptimizationMsg('Route is already geographically optimal!');
-        }
-      }
-    } catch (err) {
-      console.error('Error optimizing route:', err);
+      await mapService.optimizeTripRoute(waypoints);
+      setMapError('Route optimization preview calculated. The itinerary order was not saved by this endpoint.');
+    } catch (error) {
+      setMapError('Route optimization is unavailable for this trip right now.');
     } finally {
       setLoading(false);
     }
   };
 
+  const hasMap = isValidCoordinate(telemetry?.mapCenter);
   return (
-    <Card className="p-0 overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col min-h-[580px]">
-      {/* Map Header & Controls */}
-      <div className="p-4 bg-slate-900 text-white flex flex-col sm:flex-row items-center justify-between gap-3 z-10 border-b border-slate-800">
-        <div className="flex items-center gap-2">
-          <Navigation className="w-4 h-4 text-secondary-400" />
-          <div>
-            <span className="text-xs font-bold text-white block">{destName} Real Interactive Route Map</span>
-            <span className="text-[10px] text-slate-400">Day {selectedDay} OpenStreetMap Routing & Waypoints</span>
-          </div>
-        </div>
-
-        {/* 7 Transport Modes Bar */}
-        <div className="flex flex-wrap items-center gap-1 bg-slate-800 p-1 rounded-xl">
-          {TRANSPORT_MODES.map((item) => {
-            const Icon = item.icon;
-            const isSelected = activeMode === item.mode;
-            return (
-              <button
-                key={item.mode}
-                onClick={() => setActiveMode(item.mode)}
-                title={`${item.mode} (${item.speed})`}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition ${
-                  isSelected ? 'bg-secondary-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Icon className="w-3 h-3" />
-                <span>{item.mode}</span>
-              </button>
-            );
-          })}
+    <Card className="overflow-hidden border border-slate-200 p-0 dark:border-slate-800">
+      <div className="flex flex-col gap-3 border-b-2 border-stone-900 bg-[#fffaf0] p-4 text-stone-900 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2"><Navigation className="h-4 w-4 text-secondary-600" /><div><span className="block text-xs font-bold">{destName} route map</span><span className="text-[10px] text-stone-500">Day {selectedDay} · verified stops only</span></div></div>
+        <div role="group" aria-label="Choose transport mode" className="flex flex-wrap items-center gap-1 rounded-full border-2 border-stone-900 bg-white p-1">
+          {TRANSPORT_MODES.map(({ mode, icon: Icon }) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => chooseMode(mode)}
+              aria-pressed={activeMode === mode}
+              title={`Recalculate route estimate by ${mode.toLowerCase()}`}
+              className={`rounded-md border px-3 py-1.5 text-[11px] font-semibold transition ${activeMode === mode ? 'border-[#725e45] bg-[#f8df83] text-stone-900 shadow-[2px_2px_0_#9cc9b5]' : 'border-transparent bg-white text-stone-600 hover:bg-accent-50'}`}
+            >
+              <Icon className="h-3 w-3" />{mode}
+            </button>
+          ))}
         </div>
       </div>
-
-      {/* Optimization Banner if triggered */}
-      {optimizationMsg && (
-        <div className="px-4 py-2 bg-emerald-500/10 border-b border-emerald-500/20 text-emerald-400 text-xs font-medium flex items-center justify-between z-10">
-          <span className="flex items-center gap-1.5">
-            <Zap className="w-3.5 h-3.5 text-amber-400" />
-            {optimizationMsg}
-          </span>
-          <button onClick={() => setOptimizationMsg('')} className="text-slate-400 hover:text-white text-[10px]">
-            Dismiss
-          </button>
-        </div>
-      )}
-
-      {/* REAL LEAFLET INTERACTIVE MAP CONTAINER */}
-      <div className="flex-1 bg-slate-100 dark:bg-slate-950 relative min-h-[440px]">
-        <div ref={mapContainerRef} className="w-full h-full min-h-[440px] z-0" />
-
-        {/* Route Optimization Floating Button */}
-        <div className="absolute top-3 right-3 z-20">
-          <button
-            onClick={handleOptimizeRoute}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-secondary-600 hover:bg-secondary-500 text-white font-bold text-xs shadow-xl transition-all"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>AI Optimize Sequence</span>
-          </button>
-        </div>
-
-        {/* Map Legend & Telemetry Footer */}
-        <div className="absolute bottom-3 left-3 right-3 p-3 rounded-xl bg-slate-900/90 border border-slate-800 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-300 z-20">
-          <div className="flex items-center gap-3 text-slate-300">
-            <span className="flex items-center gap-1 text-slate-400">
-              <MapPin className="w-3.5 h-3.5 text-secondary-400" />
-              Center: {centerLat.toFixed(4)}°, {centerLng.toFixed(4)}°
-            </span>
-            <span className="text-emerald-400 font-semibold">
-              Daily Distance: {telemetry?.tripIntelligence?.dailyDistanceKm || 14.2} km
-            </span>
-            <span className="text-secondary-300 font-semibold">
-              Travel Time: {telemetry?.tripIntelligence?.dailyTravelTimeText || '42m'} via {activeMode}
-            </span>
+      {mapError && <div className="flex items-start gap-2 border-b border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900"><MapPin className="mt-0.5 h-4 w-4 shrink-0" /><span>{mapError}</span></div>}
+      <div className="relative min-h-[440px] bg-slate-100 dark:bg-slate-950">
+        {hasMap ? <div ref={mapContainerRef} className="h-[440px] w-full" /> : <div className="flex min-h-[440px] items-center justify-center px-8 text-center"><div className="max-w-sm space-y-3"><div className="mx-auto flex h-12 w-12 items-center justify-center bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300"><Building2 className="h-5 w-5" /></div><h3 className="font-display text-lg font-bold text-slate-900 dark:text-white">Map data is not ready yet</h3><p className="text-sm leading-6 text-slate-600 dark:text-slate-400">TripPilot will show the route once this trip has verified destination and activity coordinates. No estimated markers are drawn here.</p></div></div>}
+        {hasMap && <div className="absolute bottom-3 left-3 right-3 z-20 flex flex-col gap-2 border-2 border-stone-900 bg-[#fffaf0]/95 p-3 text-xs text-stone-700 shadow-[3px_3px_0_#191919] backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+          <div aria-live="polite" className="space-y-0.5">
+            <span className="block font-bold text-stone-900">{loading ? `Updating ${activeMode.toLowerCase()} estimate...` : `${telemetry?.activeMode || activeMode} route estimate`}</span>
+            {telemetry?.routeSegments?.length ? (
+              <span className="block text-stone-600">
+                {telemetry.tripIntelligence?.dailyDistanceKm} km · {telemetry.tripIntelligence?.dailyTravelTimeText}
+              </span>
+            ) : (
+              <span className="block text-stone-600">No verified route segments for this day yet.</span>
+            )}
           </div>
-
-          <div className="flex items-center gap-1.5">
-            <Badge variant="emerald" size="sm">
-              OpenStreetMap + Leaflet Real Tiles
-            </Badge>
-          </div>
-        </div>
+          <button onClick={handleOptimizeRoute} disabled={loading} className="scrapbook-button inline-flex items-center gap-1.5 bg-accent-200 px-4 py-1.5 text-xs font-bold text-stone-900 disabled:opacity-60"><Sparkles className="h-3.5 w-3.5" />Optimize verified stops</button><Badge variant="secondary" size="sm">OpenStreetMap</Badge>
+        </div>}
       </div>
     </Card>
   );
