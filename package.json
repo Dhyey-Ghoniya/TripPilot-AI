@@ -4,6 +4,7 @@
   "description": "TripPilot AI — Your AI Travel Copilot. AI-Powered Travel Planning and Itinerary Optimization System",
   "private": true,
   "scripts": {
+    "dev": "node scripts/dev.js",
     "dev:client": "cd client && npm run dev",
     "dev:server": "cd server && npm run dev",
     "install:all": "npm install && cd client && npm install && cd ../server && npm install",

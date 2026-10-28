@@ -10,7 +10,7 @@ class IxigoProvider extends BaseFlightProvider {
     const dateStr = this.formatDate(departureDate);
     const bookingUrl = this.generateBookingLink(null, searchParams);
 
-    const isDomestic = originAirport === 'AMD' && (destinationAirport === 'GOI' || destinationAirport === 'DEL' || destinationAirport === 'BOM');
+    const isDomestic = this.isDomesticRoute(originAirport, destinationAirport);
     const basePrice = isDomestic ? 5200 : 21500;
 
     return [
@@ -24,7 +24,7 @@ class IxigoProvider extends BaseFlightProvider {
         departureAirport: originAirport,
         arrivalAirport: destinationAirport,
         departureTime: `${dateStr}T08:15:00.000Z`,
-        arrivalTime: `${dateStr}T11:45:00.000Z`,
+        arrivalTime: `${dateStr}T${isDomestic ? '10:00' : '11:45'}:00.000Z`,
         durationMinutes: isDomestic ? 105 : 210,
         stopsCount: 0,
         price: { amount: basePrice, currency: 'INR' },
@@ -38,7 +38,8 @@ class IxigoProvider extends BaseFlightProvider {
   generateBookingLink(flight, searchParams) {
     const origin = (searchParams?.originAirport || 'AMD').toUpperCase();
     const dest = (searchParams?.destinationAirport || 'DXB').toUpperCase();
-    const dateStr = this.formatDate(searchParams?.departureDate).replace(/-/g, '');
+    // Ixigo's result URL expects DDMMYYYY, unlike the YYYYMMDD format used by our other adapter URLs.
+    const dateStr = this.formatDate(searchParams?.departureDate).split('-').reverse().join('');
     const cabin = searchParams?.cabinClass === 'business' ? 'e' : 'e';
     return `https://www.ixigo.com/search/result/flight/${origin}/${dest}/${dateStr}/1/0/0/${cabin}`;
   }

@@ -24,15 +24,23 @@ class FlightService {
     const flightResults = await flightProviderManager.searchAllProviders(formattedParams);
 
     // Save search history in MongoDB
-    const flightSearchDoc = new FlightSearch({
-      userId: userId || null,
-      searchParams: formattedParams,
-      results: flightResults,
-    });
-    await flightSearchDoc.save();
+    let searchId = null;
+    if (FlightSearch.db.readyState === 1) {
+      try {
+        const flightSearchDoc = new FlightSearch({
+          userId: userId || null,
+          searchParams: formattedParams,
+          results: flightResults,
+        });
+        await flightSearchDoc.save();
+        searchId = flightSearchDoc._id;
+      } catch (error) {
+        console.warn('[FlightService] Search results returned without saving history:', error.message);
+      }
+    }
 
     return {
-      searchId: flightSearchDoc._id,
+      searchId,
       searchParams: formattedParams,
       totalResults: flightResults.length,
       results: flightResults,

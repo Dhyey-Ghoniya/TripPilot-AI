@@ -10,7 +10,7 @@ class SkyscannerProvider extends BaseFlightProvider {
     const dateStr = this.formatDate(departureDate);
     const bookingUrl = this.generateBookingLink(null, searchParams);
 
-    const isDomestic = originAirport === 'AMD' && (destinationAirport === 'GOI' || destinationAirport === 'DEL' || destinationAirport === 'BOM');
+    const isDomestic = this.isDomesticRoute(originAirport, destinationAirport);
     const basePrice = isDomestic ? 4990 : 20800;
 
     return [
@@ -24,7 +24,7 @@ class SkyscannerProvider extends BaseFlightProvider {
         departureAirport: originAirport,
         arrivalAirport: destinationAirport,
         departureTime: `${dateStr}T06:00:00.000Z`,
-        arrivalTime: `${dateStr}T09:30:00.000Z`,
+        arrivalTime: `${dateStr}T${isDomestic ? '07:45' : '09:30'}:00.000Z`,
         durationMinutes: isDomestic ? 105 : 210,
         stopsCount: 0,
         price: { amount: basePrice, currency: 'INR' },
@@ -35,11 +35,10 @@ class SkyscannerProvider extends BaseFlightProvider {
     ];
   }
 
-  generateBookingLink(flight, searchParams) {
-    const origin = (searchParams?.originAirport || 'AMD').toLowerCase();
-    const dest = (searchParams?.destinationAirport || 'DXB').toLowerCase();
-    const dateStr = this.formatDate(searchParams?.departureDate).replace(/-/g, '').substring(2);
-    return `https://www.skyscanner.com/transport/flights/${origin}/${dest}/${dateStr}/`;
+  generateBookingLink() {
+    // Direct search URLs are currently triggering Skyscanner's CAPTCHA page.
+    // Use the public homepage rather than attempting to bypass its verification.
+    return 'https://www.skyscanner.co.in/';
   }
 }
 

@@ -19,13 +19,13 @@ import Card from '../../components/common/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
-import Badge from '../../components/ui/Badge';
 import Modal from '../../components/common/Modal';
 import Spinner from '../../components/ui/Spinner';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import flightService from '../../services/flightService';
 import tripService from '../../services/tripService';
+import { AIRPORT_LOCATIONS, resolveAirportCode } from '../../utils/airportLocations';
 
 const getDefaultDepartureDate = () => {
   const date = new Date();
@@ -49,7 +49,7 @@ const Flights = () => {
 
   const [flights, setFlights] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [sortBy, setSortBy] = useState('score'); // score, price, duration, departure
+  const [sortBy, setSortBy] = useState('arrival'); // arrival, price, duration
   const [maxStopsFilter, setMaxStopsFilter] = useState('all');
 
   // Attach to Trip Modal state
@@ -58,15 +58,22 @@ const Flights = () => {
   const [selectedFlightForAttach, setSelectedFlightForAttach] = useState(null);
   const [selectedTripId, setSelectedTripId] = useState('');
 
-  const executeSearch = async () => {
+  const executeSearch = async (overrides = {}) => {
+    const originCode = resolveAirportCode(origin);
+    const destinationCode = resolveAirportCode(destination);
+    if (!originCode || !destinationCode) {
+      addToast('Enter a supported city or destination name, or a 3-letter airport code.', 'error');
+      return;
+    }
+
     setIsLoading(true);
     try {
       const res = await flightService.searchFlights({
-        originAirport: origin,
-        destinationAirport: destination,
+        originAirport: originCode,
+        destinationAirport: destinationCode,
         departureDate,
         returnDate: isRoundTrip ? returnDate : null,
-        cabinClass,
+        cabinClass: overrides.cabinClass || cabinClass,
         passengers: { adults: passengers },
       });
 
@@ -120,7 +127,7 @@ const Flights = () => {
     }
   };
 
-  // Filter & Sort Logic
+  // Keep every returned option visible and sort by the selected field, arrival by default.
   const filteredFlights = flights
     .filter((fl) => {
       if (maxStopsFilter === 'direct') return fl.stopsCount === 0;
@@ -128,10 +135,11 @@ const Flights = () => {
       return true;
     })
     .sort((a, b) => {
-      if (sortBy === 'price') return (a.price.amount || a.price) - (b.price.amount || b.price);
-      if (sortBy === 'duration') return a.durationMinutes - b.durationMinutes;
-      if (sortBy === 'departure') return new Date(a.departureTime) - new Date(b.departureTime);
-      return b.score - a.score;
+      const arrivalA = new Date(a.arrivalTime).getTime();
+      const arrivalB = new Date(b.arrivalTime).getTime();
+      if (sortBy === 'price') return Number(a.price?.amount ?? a.price ?? 0) - Number(b.price?.amount ?? b.price ?? 0);
+      if (sortBy === 'duration') return Number(a.durationMinutes || 0) - Number(b.durationMinutes || 0);
+      return (Number.isFinite(arrivalA) ? arrivalA : 0) - (Number.isFinite(arrivalB) ? arrivalB : 0);
     });
 
   return (
@@ -149,7 +157,7 @@ const Flights = () => {
           </h1>
 
           <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto leading-relaxed">
-            Search across Ixigo, MakeMyTrip, Cleartrip, Skyscanner, Trip.com, and Expedia, then open the booking site for the fare you pick.
+            Review route options by arrival time. Booking links open partner searches, where you can confirm live schedules and the final fare.
           </p>
 
           <div className="bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-xl shadow-card border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white max-w-4xl mx-auto text-left mt-8">
@@ -180,18 +188,22 @@ const Flights = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <Input
-                label="Origin (Airport Code)"
-                placeholder="AMD"
+                label="From"
+                placeholder="City or airport code, e.g. Ahmedabad or AMD"
+                list="flight-airport-locations"
+                helperText="Enter a city/destination or a 3-letter airport code."
                 icon={Plane}
                 value={origin}
-                onChange={(e) => setOrigin(e.target.value.toUpperCase())}
+                onChange={(e) => setOrigin(e.target.value)}
               />
               <Input
-                label="Destination (Airport Code)"
-                placeholder="DXB"
+                label="To"
+                placeholder="City or airport code, e.g. Dubai or DXB"
+                list="flight-airport-locations"
+                helperText="Enter a city/destination or a 3-letter airport code."
                 icon={Plane}
                 value={destination}
-                onChange={(e) => setDestination(e.target.value.toUpperCase())}
+                onChange={(e) => setDestination(e.target.value)}
               />
               <Input
                 label="Departure Date"
@@ -204,15 +216,28 @@ const Flights = () => {
                 label="Cabin Class"
                 icon={Users}
                 value={cabinClass}
-                onChange={(e) => setCabinClass(e.target.value)}
+                onChange={(e) => {
+                  const nextCabinClass = e.target.value;
+                  setCabinClass(nextCabinClass);
+                  executeSearch({ cabinClass: nextCabinClass });
+                }}
                 options={['economy', 'premium_economy', 'business', 'first']}
               />
             </div>
 
+            <datalist id="flight-airport-locations">
+              {AIRPORT_LOCATIONS.map(({ city, code }) => (
+                <option key={`${city}-${code}`} value={city}>{code}</option>
+              ))}
+              {AIRPORT_LOCATIONS.map(({ code }) => (
+                <option key={`code-${code}`} value={code} />
+              ))}
+            </datalist>
+
             <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                 <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                <span>6 Provider Adapters Integrated · Real Redirection Links</span>
+                <span>Partner booking links · Confirm live availability before booking</span>
               </div>
               <Button
                 variant="primary"
@@ -221,7 +246,7 @@ const Flights = () => {
                 isLoading={isLoading}
                 onClick={executeSearch}
               >
-                Search Provider Matrix
+                Search Flights
               </Button>
             </div>
           </div>
@@ -236,7 +261,7 @@ const Flights = () => {
               Flight Options ({filteredFlights.length})
             </h2>
             <p className="text-xs text-slate-500">
-              Corridor {origin} → {destination} across Ixigo, MMT, Cleartrip, Skyscanner, Trip.com & Expedia
+              {filteredFlights.length} options returned for {origin} → {destination}. Fares and schedules are indicative until confirmed on the booking site.
             </p>
           </div>
 
@@ -249,7 +274,7 @@ const Flights = () => {
                 onChange={(e) => setSortBy(e.target.value)}
                 className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-semibold"
               >
-                <option value="score">Highest AI Score</option>
+                <option value="arrival">Arrival time</option>
                 <option value="price">Cheapest Fare</option>
                 <option value="duration">Fastest Flight</option>
                 <option value="departure">Earliest Departure</option>
@@ -280,7 +305,7 @@ const Flights = () => {
             </span>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-4">
             {filteredFlights.map((flight) => {
               const priceAmt = flight.price?.amount || flight.price || 0;
               const depTime = new Date(flight.departureTime).toLocaleTimeString([], {
@@ -308,11 +333,10 @@ const Flights = () => {
                         </span>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="emerald" size="sm">
-                          AI Match: {flight.score || 95}%
-                        </Badge>
                         <span className="text-[11px] font-bold text-secondary-600 dark:text-secondary-400">
-                          Provider: {flight.providerName || flight.provider}
+                          {flight.providerCode === 'SKYSCANNER'
+                            ? 'Open Skyscanner to search'
+                            : `Search on ${flight.providerName || flight.provider}`}
                         </span>
                       </div>
                     </div>
@@ -373,7 +397,11 @@ const Flights = () => {
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-secondary-600 hover:bg-secondary-500 text-white font-bold text-xs shadow-md transition"
                       >
-                        <span>Book on {flight.providerName || 'Provider'}</span>
+                        <span>
+                          {flight.providerCode === 'SKYSCANNER'
+                            ? 'Open Skyscanner to search'
+                            : `Book on ${flight.providerName || 'Provider'}`}
+                        </span>
                         <ExternalLink className="w-3.5 h-3.5" />
                       </a>
                     )}

@@ -24,6 +24,15 @@ class FlightProviderManager {
    * @returns {Promise<Array<object>>} Aggregated & scored flight matrix
    */
   async searchAllProviders(searchParams) {
+    const cabinPriceMultipliers = {
+      economy: 1,
+      premium_economy: 1.35,
+      business: 2.5,
+      first: 4,
+    };
+    const cabinClass = String(searchParams.cabinClass || 'economy').toLowerCase();
+    const cabinPriceMultiplier = cabinPriceMultipliers[cabinClass] || cabinPriceMultipliers.economy;
+
     const resultsPromises = this.providers.map(async (provider) => {
       try {
         const flights = await provider.searchFlights(searchParams);
@@ -35,7 +44,14 @@ class FlightProviderManager {
 
           return {
             ...flight,
+            price: {
+              ...flight.price,
+              amount: Math.round(Number(flight.price?.amount || 0) * cabinPriceMultiplier),
+            },
+            cabinClass,
             score: Math.round(rawScore),
+            // These adapters currently return curated estimates, not live inventory.
+            isIndicativeEstimate: true,
             providerName: provider.name,
             providerCode: provider.code,
             providerLogo: provider.logoUrl,
@@ -51,8 +67,8 @@ class FlightProviderManager {
     const nestedResults = await Promise.all(resultsPromises);
     const aggregated = nestedResults.flat();
 
-    // Sort by AI score descending by default
-    return aggregated.sort((a, b) => b.score - a.score);
+    // Return all adapter results in arrival order. Do not rank or hide flights by score.
+    return aggregated.sort((a, b) => new Date(a.arrivalTime) - new Date(b.arrivalTime));
   }
 }
 

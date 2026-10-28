@@ -8,6 +8,14 @@ class BaseFlightProvider {
     this.logoUrl = logoUrl || '';
   }
 
+  isDomesticRoute(originAirport, destinationAirport) {
+    const indiaAirportCodes = new Set([
+      'AMD', 'HSR', 'GOI', 'IXL', 'DEL', 'BOM', 'BLR', 'HYD', 'MAA', 'CCU', 'PNQ',
+      'JAI', 'LKO', 'VNS', 'ATQ', 'COK', 'TRV', 'IXZ', 'GAU', 'IDR', 'STV', 'BDQ', 'UDR',
+    ]);
+    return indiaAirportCodes.has(originAirport) && indiaAirportCodes.has(destinationAirport);
+  }
+
   /**
    * Search flights for given search parameters
    * @param {object} searchParams

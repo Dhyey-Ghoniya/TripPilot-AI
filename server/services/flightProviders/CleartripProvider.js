@@ -10,7 +10,7 @@ class CleartripProvider extends BaseFlightProvider {
     const dateStr = this.formatDate(departureDate);
     const bookingUrl = this.generateBookingLink(null, searchParams);
 
-    const isDomestic = originAirport === 'AMD' && (destinationAirport === 'GOI' || destinationAirport === 'DEL' || destinationAirport === 'BOM');
+    const isDomestic = this.isDomesticRoute(originAirport, destinationAirport);
     const basePrice = isDomestic ? 5300 : 21950;
 
     return [
@@ -24,7 +24,7 @@ class CleartripProvider extends BaseFlightProvider {
         departureAirport: originAirport,
         arrivalAirport: destinationAirport,
         departureTime: `${dateStr}T19:45:00.000Z`,
-        arrivalTime: `${dateStr}T23:15:00.000Z`,
+        arrivalTime: `${dateStr}T${isDomestic ? '21:40' : '23:15'}:00.000Z`,
         durationMinutes: isDomestic ? 115 : 210,
         stopsCount: 0,
         price: { amount: basePrice, currency: 'INR' },

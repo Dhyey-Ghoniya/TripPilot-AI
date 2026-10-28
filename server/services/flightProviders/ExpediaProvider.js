@@ -10,7 +10,7 @@ class ExpediaProvider extends BaseFlightProvider {
     const dateStr = this.formatDate(departureDate);
     const bookingUrl = this.generateBookingLink(null, searchParams);
 
-    const isDomestic = originAirport === 'AMD' && (destinationAirport === 'GOI' || destinationAirport === 'DEL' || destinationAirport === 'BOM');
+    const isDomestic = this.isDomesticRoute(originAirport, destinationAirport);
     const basePrice = isDomestic ? 5400 : 22500;
 
     return [
@@ -24,7 +24,7 @@ class ExpediaProvider extends BaseFlightProvider {
         departureAirport: originAirport,
         arrivalAirport: destinationAirport,
         departureTime: `${dateStr}T21:30:00.000Z`,
-        arrivalTime: `${dateStr}T01:00:00.000Z`,
+        arrivalTime: isDomestic ? `${dateStr}T23:20:00.000Z` : `${dateStr}T01:00:00.000Z`,
         durationMinutes: isDomestic ? 110 : 210,
         stopsCount: 0,
         price: { amount: basePrice, currency: 'INR' },

@@ -14,37 +14,41 @@ import {
 import TripPilotChat from '../../components/chat/TripPilotChat';
 import { getG8TripDestinationPhoto } from '../../utils/g8TripDestinationPhotos';
 import ScrapbookDoodles from '../../components/common/ScrapbookDoodles';
+import DestinationPhoto from '../../components/common/DestinationPhoto';
 
 const FEATURED_PHOTOS = ['Japan', 'Rome', 'Phuket'];
+const commonsFile = (filename) => `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=900`;
 
 const DESTINATIONS = [
   {
     name: 'Japan',
     detail: 'City neighbourhoods and rail journeys',
+    photo: getG8TripDestinationPhoto('Japan'),
     tone: 'bg-[#e7e9df]',
     accent: 'text-[#315d4e]',
-    art: 'japan',
   },
   {
     name: 'Ladakh',
     detail: 'High roads and mountain villages',
+    photo: commonsFile('Ladakh landscape near Leh.jpg'),
+    photoCredit: { label: 'Photo: Yann Forget · CC BY-SA 4.0', url: 'https://commons.wikimedia.org/wiki/File:Ladakh_landscape_near_Leh.jpg' },
     tone: 'bg-[#e9e2d5]',
     accent: 'text-[#865b37]',
-    art: 'ladakh',
   },
   {
     name: 'Amalfi Coast',
     detail: 'Coastal towns and ferry routes',
+    photo: commonsFile('Amalfi Coast, Italy.jpg'),
     tone: 'bg-[#dce9e5]',
     accent: 'text-[#28756f]',
-    art: 'coast',
   },
   {
     name: 'Bali',
     detail: 'Temples, rice terraces and beaches',
+    photo: commonsFile('Tegallalang Rice Terraces Bali.jpg'),
+    photoCredit: { label: 'Photo: Philip Nalangan · CC BY 4.0', url: 'https://commons.wikimedia.org/wiki/File:Tegallalang_Rice_Terraces_Bali.jpg' },
     tone: 'bg-[#e6eadb]',
     accent: 'text-[#4e6949]',
-    art: 'bali',
   },
 ];
 
@@ -53,52 +57,6 @@ const START_LINKS = [
   { label: 'Find a stay', detail: 'Search by dates and guests', icon: Hotel, to: '/hotels' },
   { label: 'Explore places', detail: 'Browse destinations and ideas', icon: MapPin, to: '/explore' },
 ];
-
-const DESTINATION_ART = {
-  japan: (
-    <>
-      <circle cx="230" cy="54" r="25" fill="#d77c5d" opacity=".88" />
-      <path d="M0 180 55 116l41 43 50-72 61 93Z" fill="#87957b" />
-      <path d="M0 193 82 145l43 29 48-45 67 64Z" fill="#506d60" />
-      <path d="M0 197h240" stroke="#f4f2e8" strokeWidth="2" opacity=".8" />
-      <path d="M34 200v-36m-8 8 8-10 8 10m-8 9-7-7m7 14 8-9" stroke="#f4f2e8" strokeWidth="2" fill="none" />
-    </>
-  ),
-  ladakh: (
-    <>
-      <circle cx="196" cy="45" r="20" fill="#dda36e" opacity=".9" />
-      <path d="m0 193 62-100 26 36 34-61 71 125Z" fill="#8d7965" />
-      <path d="m60 193 60-91 20 27 32-54 68 118Z" fill="#5e6459" />
-      <path d="m111 119 9-17 9 16m40-28 11-18 10 18" fill="none" stroke="#f5f1e7" strokeWidth="3" />
-      <path d="M0 194c48-21 77-9 113 2 43 14 79-13 127-4" fill="none" stroke="#d1b28c" strokeWidth="5" />
-    </>
-  ),
-  coast: (
-    <>
-      <path d="M0 138c43-12 57-44 92-37 29 6 44 39 75 32 29-7 37-35 73-32v99H0Z" fill="#748b70" />
-      <path d="M0 175c35-16 55-6 79 6 28 14 47 1 68-7 28-12 55-3 93 13v18H0Z" fill="#c7a57c" />
-      <path d="M0 199c40-8 68-8 108-2 44 6 79-6 132-2v25H0Z" fill="#77a8a2" />
-      <path d="M0 209c38-5 64-3 97 1m43 1c30-5 61-4 94 0" stroke="#edf4ef" strokeWidth="2" fill="none" opacity=".8" />
-      <path d="m148 124 18-29 18 29m-22-2h8v20h-8Z" fill="#e8dfcb" />
-    </>
-  ),
-  bali: (
-    <>
-      <circle cx="55" cy="47" r="21" fill="#d5a26d" opacity=".9" />
-      <path d="M0 150c47-28 82-32 121-4 39-31 76-29 119-8v85H0Z" fill="#8b9870" />
-      <path d="M0 174c41-19 77-12 112 4 35-19 77-21 128 0v45H0Z" fill="#587960" />
-      <path d="M0 190c39-16 74-12 106 2 40-17 82-17 134 0" stroke="#d5d4a8" strokeWidth="3" fill="none" />
-      <path d="M110 147v-30l14-18 14 18v30m-22-4v-15h16v15" fill="#e8dfcb" />
-    </>
-  ),
-};
-
-const DestinationArtwork = ({ art }) => (
-  <svg viewBox="0 0 240 220" className="h-full w-full" role="img" aria-label="Decorative landscape illustration">
-    <rect width="240" height="220" fill="currentColor" opacity=".06" />
-    {DESTINATION_ART[art]}
-  </svg>
-);
 
 const Home = () => (
   <div className="overflow-hidden bg-[#E9DCC4] text-stone-900 dark:bg-stone-950 dark:text-white">
@@ -168,15 +126,14 @@ const Home = () => (
         <Link to="/explore" className="inline-flex items-center gap-2 text-sm font-bold text-secondary-800 hover:text-secondary-900 dark:text-secondary-300 dark:hover:text-secondary-200">Explore all destinations <ArrowRight className="h-4 w-4" /></Link>
       </div>
       <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {DESTINATIONS.map((destination, index) => (
+        {DESTINATIONS.map((destination) => (
           <Link key={destination.name} to={`/explore?destination=${encodeURIComponent(destination.name)}`} className="scrapbook-paper scrapbook-wiggle group overflow-hidden transition-transform duration-200 dark:bg-stone-900">
             <div className={`relative h-40 overflow-hidden ${destination.tone}`}>
               <div className={`absolute right-4 top-4 flex h-9 w-9 items-center justify-center border border-white/70 bg-white/60 ${destination.accent}`}><MapPin className="h-4 w-4" /></div>
-              <div className={`absolute inset-0 ${destination.accent}`}><DestinationArtwork art={destination.art} /></div>
-              <span className="absolute bottom-3 left-4 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-800/70">Destination idea {String(index + 1).padStart(2, '0')}</span>
+              <div className="absolute inset-0"><DestinationPhoto destination={destination.name} src={destination.photo} /></div>
             </div>
             <div className="flex items-start justify-between gap-3 p-4">
-              <div><h3 className="font-serif text-xl font-bold text-slate-950 dark:text-white">{destination.name}</h3><p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{destination.detail}</p></div>
+              <div><h3 className="font-serif text-xl font-bold text-slate-950 dark:text-white">{destination.name}</h3><p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{destination.detail}</p>{destination.photoCredit && <a href={destination.photoCredit.url} target="_blank" rel="noreferrer" className="mt-1 block text-[9px] leading-3 text-slate-500 underline">{destination.photoCredit.label}</a>}</div>
               <ArrowUpRight className="mt-1 h-4 w-4 shrink-0 text-slate-400 transition-colors group-hover:text-teal-700 dark:group-hover:text-teal-300" />
             </div>
           </Link>

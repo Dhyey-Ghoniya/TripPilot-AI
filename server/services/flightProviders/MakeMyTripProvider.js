@@ -10,7 +10,7 @@ class MakeMyTripProvider extends BaseFlightProvider {
     const dateStr = this.formatDate(departureDate);
     const bookingUrl = this.generateBookingLink(null, searchParams);
 
-    const isDomestic = originAirport === 'AMD' && (destinationAirport === 'GOI' || destinationAirport === 'DEL' || destinationAirport === 'BOM');
+    const isDomestic = this.isDomesticRoute(originAirport, destinationAirport);
     const basePrice = isDomestic ? 5150 : 22100;
 
     return [
@@ -24,7 +24,7 @@ class MakeMyTripProvider extends BaseFlightProvider {
         departureAirport: originAirport,
         arrivalAirport: destinationAirport,
         departureTime: `${dateStr}T14:30:00.000Z`,
-        arrivalTime: `${dateStr}T18:00:00.000Z`,
+        arrivalTime: `${dateStr}T${isDomestic ? '16:20' : '18:00'}:00.000Z`,
         durationMinutes: isDomestic ? 110 : 210,
         stopsCount: 0,
         price: { amount: basePrice, currency: 'INR' },
