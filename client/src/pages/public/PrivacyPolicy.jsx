@@ -4,7 +4,7 @@ import Badge from '../../components/ui/Badge';
 import { Shield, Lock, Eye, Database, FileText, Mail } from 'lucide-react';
 
 const PrivacyPolicy = () => {
-  const lastUpdated = 'October 25, 2026';
+  const lastUpdated = 'October 29, 2026';
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10">
@@ -52,12 +52,13 @@ const PrivacyPolicy = () => {
           <p>Your data is processed strictly for functional travel logistics, including:</p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs sm:text-sm">
             <li>Synthesizing personalized travel schedules and route sequences.</li>
-            <li>Querying real-time flight schedules and accommodation inventory from third-party travel aggregators.</li>
+            <li>Showing illustrative flight and stay estimates and linking to provider searches. TripPilot does not currently receive live flight or hotel inventory.</li>
+            <li>When an administrator configures an LLM provider, sending the user's current prompt and relevant trip or itinerary context to that provider to interpret requests and draft chat responses.</li>
             <li>Maintaining account security, authentication sessions, and password recovery.</li>
             <li>Preventing automated abuse and securing application endpoints.</li>
           </ul>
           <p className="pt-2 text-xs text-slate-500 dark:text-slate-400">
-            We do not sell, rent, or trade your personal information to third-party data brokers or advertisers.
+            We do not sell, rent, or trade your personal information to third-party data brokers or advertisers. LLM requests are sent only when a provider key is configured on the server. Provider data handling is subject to that provider's terms and privacy settings.
           </p>
         </section>
 
