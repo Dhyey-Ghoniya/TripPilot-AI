@@ -26,6 +26,7 @@ import {
   Sun,
   Utensils,
   Eye,
+  MessageCircle,
 } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Tabs from '../../components/common/Tabs';
@@ -40,6 +41,7 @@ import BudgetView from '../../components/workspace/BudgetView';
 import MapView from '../../components/workspace/MapView';
 import TripHeader from '../../components/workspace/TripHeader';
 import ActivityPhoto from '../../components/common/ActivityPhoto';
+import TripDiscussion from '../../components/workspace/TripDiscussion';
 
 import tripService from '../../services/tripService';
 import itineraryService from '../../services/itineraryService';
@@ -229,7 +231,8 @@ const TripWorkspace = () => {
     { id: 'budget', label: 'Budget Manager', icon: Wallet },
     { id: 'flights', label: 'Flights', icon: Plane },
     { id: 'stay', label: 'Stays', icon: Building2 },
-    { id: 'ai_assistant', label: 'AI Copilot', icon: Bot },
+    ...(!trip?.isReadOnly ? [{ id: 'ai_assistant', label: 'AI Copilot', icon: Bot }] : []),
+    { id: 'discussion', label: 'Group Chat', icon: MessageCircle },
   ];
 
   if (isLoading) {
@@ -268,13 +271,23 @@ const TripWorkspace = () => {
         trip={trip}
         itinerary={itinerary}
         onBookFlights={() => setActiveTab('flights')}
-        onShareTrip={() => {
-          navigator.clipboard.writeText(window.location.href);
-          addToast('Trip blueprint link copied to clipboard.', 'success');
+        onShareTrip={async () => {
+          try {
+            const response = await tripService.setSharing(trip._id, true);
+            const updatedTrip = response?.data || response;
+            setTrip(updatedTrip);
+            await navigator.clipboard.writeText(`${window.location.origin}/share/trip/${updatedTrip.shareSettings.shareCode}`);
+            addToast('Read-only public trip link copied.', 'success');
+          } catch (error) {
+            addToast(error.customMessage || 'Could not enable trip sharing.', 'error');
+          }
         }}
         onExportTrip={handleExportTrip}
-        onSaveTrip={handleSaveTrip}
+        onSaveTrip={!trip.isReadOnly ? handleSaveTrip : null}
+        isReadOnly={trip.isReadOnly}
       />
+
+      {trip.isReadOnly && <div className="rounded-lg border border-slate-300 bg-slate-100 px-4 py-3 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">You have view-only access to this trip. Ask the owner for editor access to make changes.</div>}
 
       {/* Navigation Tabs Bar */}
       <Tabs tabs={workspaceTabs} activeTab={activeTab} onChange={setActiveTab} />
@@ -481,6 +494,7 @@ const TripWorkspace = () => {
               </div>
             </Card>
 
+            {!trip.isReadOnly && <>
             {/* ── BENTO TILE 5: QUICK AI COPILOT COMMANDS (4 cols) ── */}
             <Card className="p-6 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3 flex flex-col justify-between">
               <div className="space-y-2">
@@ -536,6 +550,7 @@ const TripWorkspace = () => {
                 </span>
               )}
             </Card>
+            </>}
           </div>
         </div>
       )}
@@ -630,6 +645,8 @@ const TripWorkspace = () => {
           <AiTripAssistant tripId={trip._id} onExecuteCommand={handleExecuteAiCommand} />
         </div>
       )}
+
+      {activeTab === 'discussion' && <TripDiscussion trip={trip} onTripChanged={loadTripData} />}
     </div>
   );
 };

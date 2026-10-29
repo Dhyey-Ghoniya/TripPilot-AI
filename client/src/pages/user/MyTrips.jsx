@@ -48,6 +48,9 @@ const MyTrips = () => {
   // Modals & Action States
   const [editingTrip, setEditingTrip] = useState(null);
   const [sharingTrip, setSharingTrip] = useState(null);
+  const [collaboratorEmail, setCollaboratorEmail] = useState('');
+  const [collaboratorRole, setCollaboratorRole] = useState('editor');
+  const [collaborators, setCollaborators] = useState([]);
   const [exportingTrip, setExportingTrip] = useState(null);
   const [deleteConfirmTripId, setDeleteConfirmTripId] = useState(null);
 
@@ -164,16 +167,67 @@ const MyTrips = () => {
   };
 
   // Action 6: Share Link Generator
-  const handleShareClick = (trip) => {
-    setSharingTrip(trip);
+  const handleShareClick = async (trip) => {
+    try {
+      const [shareRes, memberRes] = await Promise.all([
+        tripService.setSharing(trip._id, true),
+        tripService.getCollaborators(trip._id),
+      ]);
+      const updatedTrip = shareRes?.data || shareRes;
+      setSharingTrip(updatedTrip);
+      setCollaborators(memberRes?.data?.collaborators || []);
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Could not enable trip sharing.', 'error');
+    }
   };
 
-  const copyShareLink = () => {
+  const copyShareLink = async () => {
     if (!sharingTrip) return;
-    const shareCode = sharingTrip.shareSettings?.shareCode || 'TRIP123';
+    const shareCode = sharingTrip.shareSettings?.shareCode;
+    if (!shareCode) return addToast('A share code is not available for this trip.', 'error');
     const link = `${window.location.origin}/share/trip/${shareCode}`;
-    navigator.clipboard.writeText(link);
-    addToast('Secure read-only share link copied to clipboard!', 'success');
+    try {
+      await navigator.clipboard.writeText(link);
+      addToast('Read-only trip link copied.', 'success');
+    } catch {
+      addToast('Clipboard access is unavailable. Select and copy the link.', 'error');
+    }
+  };
+
+  const inviteCollaborator = async (event) => {
+    event.preventDefault();
+    if (!sharingTrip || !collaboratorEmail.trim()) return;
+    try {
+      const result = await tripService.addCollaborator(sharingTrip._id, collaboratorEmail, collaboratorRole);
+      const member = result?.data?.collaborator;
+      setCollaborators((previous) => [...previous.filter((item) => item.id !== member.id), member]);
+      setCollaboratorEmail('');
+      addToast('Collaborator added. They can open this trip after signing in.', 'success');
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Could not add that collaborator.', 'error');
+    }
+  };
+
+  const removeCollaborator = async (collaborator) => {
+    if (!sharingTrip) return;
+    try {
+      await tripService.removeCollaborator(sharingTrip._id, collaborator.id);
+      setCollaborators((previous) => previous.filter((member) => member.id !== collaborator.id));
+      addToast('Collaborator removed.', 'info');
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Could not remove collaborator.', 'error');
+    }
+  };
+
+  const disablePublicSharing = async () => {
+    if (!sharingTrip) return;
+    try {
+      const result = await tripService.setSharing(sharingTrip._id, false);
+      setSharingTrip(result?.data || result);
+      addToast('Public link disabled.', 'info');
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Could not disable sharing.', 'error');
+    }
   };
 
   // Action 7: Export Trip
@@ -335,6 +389,7 @@ const MyTrips = () => {
 
                     {/* Quick Toolbar */}
                     <div className="absolute top-3 right-3 flex items-center gap-1">
+                      {trip.isOwner !== false && <>
                       <button
                         onClick={() => handleShareClick(trip)}
                         className="p-2 rounded-xl bg-slate-900/80 hover:bg-slate-900 text-white transition backdrop-blur-md"
@@ -356,6 +411,7 @@ const MyTrips = () => {
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                       </button>
+                      </>}
                     </div>
 
                     <div className="absolute bottom-3 left-3 right-3 text-white">
@@ -405,6 +461,7 @@ const MyTrips = () => {
                   </div>
 
                   <div className="flex items-center justify-between pt-1 text-xs">
+                    {trip.isOwner !== false && <>
                     {trip.status === 'completed' ? (
                       <button
                         onClick={() => navigate('/journal')}
@@ -433,6 +490,8 @@ const MyTrips = () => {
                     >
                       <Trash2 className="w-3.5 h-3.5" /> Delete
                     </button>
+                    </>}
+                    {trip.isOwner === false && <span className="text-xs font-semibold text-slate-500">Shared with you</span>}
                   </div>
                 </div>
               </Card>
@@ -499,17 +558,17 @@ const MyTrips = () => {
       {/* ═══════════════════════════════════════════════════════════════ */}
       <Modal
         isOpen={Boolean(sharingTrip)}
-        onClose={() => setSharingTrip(null)}
-        title="Share Trip Blueprint"
+        onClose={() => { setSharingTrip(null); setCollaboratorEmail(''); }}
+        title="Share and plan together"
         maxWidth="max-w-md"
       >
         <div className="space-y-4 py-2">
           <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 text-xs space-y-1">
             <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-bold">
               <Lock className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Read-Only Privacy Guaranteed</span>
+              <span>Public link is read-only</span>
             </div>
-            <p className="text-slate-500">Shared users receive view-only access. Owner private account details are never exposed.</p>
+            <p className="text-slate-500">Anyone with this link can view the itinerary. Add TripPilot accounts below to collaborate on trip changes.</p>
           </div>
 
           <div>
@@ -518,14 +577,35 @@ const MyTrips = () => {
               <input
                 type="text"
                 readOnly
-                value={`${window.location.origin}/share/trip/${sharingTrip?.shareSettings?.shareCode || 'TRIP123'}`}
+                value={`${window.location.origin}/share/trip/${sharingTrip?.shareSettings?.shareCode || ''}`}
                 className="flex-1 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 outline-none"
               />
               <Button variant="primary" size="sm" icon={Copy} onClick={copyShareLink}>
                 Copy Link
               </Button>
             </div>
+            {sharingTrip?.shareSettings?.isPublic && <button type="button" onClick={disablePublicSharing} className="mt-2 text-xs font-semibold text-red-600 hover:underline">Disable public link</button>}
           </div>
+
+          <form onSubmit={inviteCollaborator} className="space-y-2 border-t border-slate-200 pt-4 dark:border-slate-700">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200" htmlFor="collaborator-email">Add a collaborator by account email</label>
+            <div className="flex gap-2">
+              <input id="collaborator-email" type="email" required value={collaboratorEmail} onChange={(event) => setCollaboratorEmail(event.target.value)} placeholder="friend@example.com" className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" />
+              <select aria-label="Collaborator role" value={collaboratorRole} onChange={(event) => setCollaboratorRole(event.target.value)} className="rounded-lg border border-slate-300 px-2 text-xs dark:border-slate-700 dark:bg-slate-900">
+                <option value="editor">Can edit</option><option value="viewer">Can view</option>
+              </select>
+            </div>
+            <Button type="submit" variant="outline" size="sm">Add collaborator</Button>
+            <p className="text-[11px] text-slate-500">They need an existing TripPilot account. This adds access immediately; no email is sent.</p>
+          </form>
+
+          {collaborators.length > 0 && <div className="space-y-2 border-t border-slate-200 pt-4 dark:border-slate-700">
+            <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Trip collaborators</p>
+            {collaborators.map((member) => <div key={member.id} className="flex items-center justify-between gap-2 text-xs">
+              <span className="min-w-0 truncate text-slate-600 dark:text-slate-300">{member.name || member.email} <span className="text-slate-400">({member.role})</span></span>
+              <button type="button" onClick={() => removeCollaborator(member)} className="shrink-0 font-semibold text-red-600 hover:underline">Remove</button>
+            </div>)}
+          </div>}
         </div>
       </Modal>
 

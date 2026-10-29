@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const hotelController = require('../controllers/hotel.controller');
 const { authenticate } = require('../middleware/auth.middleware');
+const requireTripEditor = require('../middleware/requireTripEditor');
 
 // Public / Guest optional search route
 const optionalAuthenticate = (req, res, next) => {
@@ -28,7 +29,7 @@ const optionalAuthenticate = (req, res, next) => {
 };
 
 router.post('/search', optionalAuthenticate, hotelController.searchHotels);
-router.post('/attach', authenticate, hotelController.attachHotelToTrip);
+router.post('/attach', authenticate, requireTripEditor, hotelController.attachHotelToTrip);
 router.post('/ai-command', optionalAuthenticate, hotelController.executeAiHotelCommand);
 
 module.exports = router;

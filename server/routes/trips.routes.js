@@ -15,6 +15,12 @@ router.post('/', tripController.createTrip);
 router.get('/analytics/completed', tripController.getCompletedTripsAnalytics);
 
 router.get('/:id', tripController.getTripById);
+router.put('/:id/sharing', tripController.setSharing);
+router.get('/:id/collaborators', tripController.getCollaborators);
+router.post('/:id/collaborators', tripController.addCollaborator);
+router.delete('/:id/collaborators/:userId', tripController.removeCollaborator);
+router.get('/:id/conversation', tripController.getConversation);
+router.post('/:id/conversation', tripController.postConversation);
 router.put('/:id', tripController.updateTrip);
 router.post('/:id/duplicate', tripController.duplicateTrip);
 router.put('/:id/archive', tripController.archiveTrip);

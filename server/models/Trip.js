@@ -220,6 +220,8 @@ const TripSchema = new mongoose.Schema(
       {
         sender: { type: String, enum: ['user', 'ai', 'system'] },
         message: { type: String },
+        authorName: { type: String, default: '' },
+        authorUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         timestamp: { type: Date, default: Date.now },
         context: { type: mongoose.Schema.Types.Mixed },
       }
@@ -299,6 +301,11 @@ const TripSchema = new mongoose.Schema(
       shareCode: { type: String, default: () => Math.random().toString(36).substring(2, 10).toUpperCase() },
       allowComments: { type: Boolean, default: true },
     },
+    collaborators: [{
+      userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+      role: { type: String, enum: ['editor', 'viewer'], default: 'editor' },
+      addedAt: { type: Date, default: Date.now },
+    }],
   },
   { timestamps: true }
 );

@@ -1,6 +1,8 @@
 const Trip = require('../models/Trip');
 const Itinerary = require('../models/Itinerary');
 const Expense = require('../models/Expense');
+const User = require('../models/User');
+const { isTripOwner, canViewTrip, canEditTrip, assertTripEditAccess } = require('../utils/tripAccess');
 require('../models/Activity');
 
 class TripService {
@@ -15,7 +17,7 @@ class TripService {
    *   - 'all': All trips
    */
   async getUserTrips(userId, { tab, status, limit = 20, page = 1 } = {}) {
-    const query = { userId };
+    const query = { $or: [{ userId }, { 'collaborators.userId': userId }] };
     const now = new Date();
 
     const selectedTab = tab || status;
@@ -48,7 +50,7 @@ class TripService {
     ]);
 
     return {
-      trips,
+      trips: trips.map((trip) => ({ ...trip.toObject(), isOwner: isTripOwner(trip, userId) })),
       total,
       page: parseInt(page, 10),
       pages: Math.ceil(total / parseInt(limit, 10)) || 1,
@@ -66,17 +68,15 @@ class TripService {
       throw err;
     }
 
-    const isOwner = userId && trip.userId.toString() === userId.toString();
-    const isPublic = trip.shareSettings?.isPublic;
-
-    if (!isOwner && !isPublic) {
+    const isOwner = isTripOwner(trip, userId);
+    if (!canViewTrip(trip, userId)) {
       const err = new Error('Access denied. You do not have permission to view this trip.');
       err.statusCode = 403;
       throw err;
     }
 
     const tripObj = trip.toObject();
-    tripObj.isReadOnly = !isOwner;
+    tripObj.isReadOnly = !canEditTrip(trip, userId);
 
     return tripObj;
   }
@@ -188,11 +188,7 @@ class TripService {
       throw err;
     }
 
-    if (trip.userId.toString() !== userId.toString()) {
-      const err = new Error('Access denied. You cannot edit this trip.');
-      err.statusCode = 403;
-      throw err;
-    }
+    assertTripEditAccess(trip, userId);
 
     const allowedFields = [
       'title',
@@ -209,7 +205,6 @@ class TripService {
       'travelStyle',
       'tags',
       'notes',
-      'shareSettings',
     ];
 
     allowedFields.forEach((field) => {
@@ -219,6 +214,98 @@ class TripService {
     });
 
     return await trip.save();
+  }
+
+  async setTripSharing(tripId, userId, isPublic) {
+    const trip = await Trip.findById(tripId);
+    if (!trip) throw Object.assign(new Error('Trip not found'), { statusCode: 404 });
+    if (!isTripOwner(trip, userId)) throw Object.assign(new Error('Only the trip owner can change sharing.'), { statusCode: 403 });
+    trip.shareSettings.isPublic = Boolean(isPublic);
+    await trip.save();
+    return trip;
+  }
+
+  async addCollaborator(tripId, ownerId, email, role = 'editor') {
+    const trip = await Trip.findById(tripId);
+    if (!trip) throw Object.assign(new Error('Trip not found'), { statusCode: 404 });
+    if (!isTripOwner(trip, ownerId)) throw Object.assign(new Error('Only the trip owner can invite collaborators.'), { statusCode: 403 });
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    if (!normalizedEmail) throw Object.assign(new Error('Enter an account email address.'), { statusCode: 400 });
+    const user = await User.findOne({ email: normalizedEmail }).select('_id email firstName lastName');
+    if (!user) throw Object.assign(new Error('No TripPilot account uses that email yet. Ask them to create an account, then invite them.'), { statusCode: 404 });
+    if (isTripOwner(trip, user._id)) throw Object.assign(new Error('The trip owner already has full access.'), { statusCode: 400 });
+    const member = trip.collaborators.find((item) => String(item.userId) === String(user._id));
+    if (member) member.role = role === 'viewer' ? 'viewer' : 'editor';
+    else trip.collaborators.push({ userId: user._id, role: role === 'viewer' ? 'viewer' : 'editor' });
+    await trip.save();
+    return { trip, collaborator: { id: user._id, email: user.email, name: `${user.firstName} ${user.lastName}`.trim(), role: role === 'viewer' ? 'viewer' : 'editor' } };
+  }
+
+  async removeCollaborator(tripId, ownerId, collaboratorId) {
+    const trip = await Trip.findById(tripId);
+    if (!trip) throw Object.assign(new Error('Trip not found'), { statusCode: 404 });
+    if (!isTripOwner(trip, ownerId)) throw Object.assign(new Error('Only the trip owner can remove collaborators.'), { statusCode: 403 });
+    trip.collaborators = trip.collaborators.filter((item) => String(item.userId) !== String(collaboratorId));
+    await trip.save();
+    return trip;
+  }
+
+  async getCollaborators(tripId, userId) {
+    const trip = await Trip.findById(tripId).populate('collaborators.userId', 'email firstName lastName');
+    if (!trip) throw Object.assign(new Error('Trip not found'), { statusCode: 404 });
+    if (!canViewTrip(trip, userId)) throw Object.assign(new Error('Access denied.'), { statusCode: 403 });
+    return trip.collaborators.map((member) => ({
+      id: member.userId?._id,
+      email: member.userId?.email,
+      name: `${member.userId?.firstName || ''} ${member.userId?.lastName || ''}`.trim(),
+      role: member.role,
+      addedAt: member.addedAt,
+    }));
+  }
+
+  async getTripConversation(tripId, userId) {
+    const trip = await Trip.findById(tripId).select('conversation shareSettings collaborators userId');
+    if (!trip) throw Object.assign(new Error('Trip not found'), { statusCode: 404 });
+    if (!canViewTrip(trip, userId)) throw Object.assign(new Error('Access denied.'), { statusCode: 403 });
+    return trip.conversation || [];
+  }
+
+  async postTripConversation(tripId, userId, messageText) {
+    const trip = await Trip.findById(tripId).populate('itineraryId');
+    if (!trip) throw Object.assign(new Error('Trip not found'), { statusCode: 404 });
+    assertTripEditAccess(trip, userId);
+    const message = String(messageText || '').trim();
+    if (!message || message.length > 2000) throw Object.assign(new Error('Message must contain 1 to 2,000 characters.'), { statusCode: 400 });
+    const user = await User.findById(userId).select('firstName lastName');
+    const authorName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Trip collaborator';
+    trip.conversation.push({ sender: 'user', message, authorName, authorUserId: userId, timestamp: new Date() });
+
+    let assistantReply = null;
+    if (/@vani\b/i.test(message)) {
+      const travelOrchestrator = require('./travelOrchestrator.service');
+      const llmChat = require('./llmChat.service');
+      const prompt = message.replace(/@vani\b/ig, '').trim();
+      const interpreted = await llmChat.interpretTripTurn({ message: prompt, trip });
+      if (interpreted && ['question', 'none'].includes(interpreted.intent)) {
+        assistantReply = interpreted.reply || 'Could you clarify what you would like to know about this trip?';
+      } else {
+        const normalizedCommand = interpreted?.command || ({
+          search_flights: 'find flights', search_hotels: 'find hotels',
+          travel_requirements: 'show travel requirements', checklist: 'show booking checklist',
+        }[interpreted?.intent] || prompt);
+        const isSupportedWithoutLlm = /\b(cheaper|add |remove|hotel|restaurant|flight|checklist|visa|pack|road trip|rain|raining|indoor|swap|replace|move|weather|optimi[sz]e|route)\b/i.test(prompt);
+        const canExecute = Boolean(interpreted && ['update', 'search_flights', 'search_hotels', 'travel_requirements', 'checklist'].includes(interpreted.intent)) || (!interpreted && isSupportedWithoutLlm);
+        if (canExecute) {
+          const result = await travelOrchestrator.orchestrateTripPlanning({ prompt: normalizedCommand, userId, tripId });
+          assistantReply = result.copilotMessage || 'I could not apply that request. Please clarify the trip change you want.';
+        } else {
+          assistantReply = 'I can update activities, dates, route, budget, flights, hotels, or travel requirements. Tell me the trip change you want, or ask a question about the itinerary.';
+        }
+      }
+      trip.conversation.push({ sender: 'ai', message: assistantReply, authorName: 'Vani', timestamp: new Date() });
+    }
+    await trip.save();
+    return { conversation: trip.conversation, assistantReply };
   }
 
   /**
@@ -347,6 +434,14 @@ class TripService {
 
     // Privacy Protection: Strip owner private data
     delete trip.userId;
+    delete trip.collaborators;
+    delete trip.conversation;
+    delete trip.travelerProfiles;
+    delete trip.notes;
+    delete trip.selectedOptions;
+    delete trip.optimizationHistory;
+    delete trip.constraints;
+    delete trip.shareSettings;
 
     return {
       ...trip,

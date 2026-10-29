@@ -99,6 +99,9 @@ class ActivityService {
       return {
         ...act,
         id: act._id ? act._id.toString() : act.id || `act-${Math.random().toString(36).substring(2, 7)}`,
+        source: 'TripPilot curated suggestion',
+        isIndicativeSuggestion: true,
+        inventoryVerified: false,
         activityFit: fit,
       };
     });

@@ -99,26 +99,24 @@ const getProviderStatus = async (req, res) => {
       { name: 'Ixigo Adapter', code: 'IXIGO', status: 'Mock/Development', note: 'Standardized flight aggregator matrix adapter.' },
       { name: 'MakeMyTrip Adapter', code: 'MMT', status: 'Mock/Development', note: 'Deep booking link generator and fare engine.' },
       { name: 'Cleartrip Adapter', code: 'CLEARTRIP', status: 'Mock/Development', note: 'Multi-carrier fare comparison adapter.' },
-      { name: 'Skyscanner Adapter', code: 'SKYSCANNER', status: process.env.SKYSCANNER_API_KEY ? 'Connected' : 'Integration Ready', note: process.env.SKYSCANNER_API_KEY ? 'Live API key detected.' : 'Adapter ready for live API key integration.' },
+      { name: 'Skyscanner Search Handoff', code: 'SKYSCANNER', status: 'Sample Data', note: 'No live flight search connector is implemented. Results are illustrative and links open provider search.' },
       { name: 'Trip.com Adapter', code: 'TRIP_COM', status: 'Mock/Development', note: 'Global flight deal aggregator matrix adapter.' },
-      { name: 'Expedia Adapter', code: 'EXPEDIA', status: process.env.EXPEDIA_API_KEY ? 'Connected' : 'Integration Ready', note: process.env.EXPEDIA_API_KEY ? 'Live API credentials set.' : 'Adapter structure ready for API credentials.' },
+      { name: 'Expedia Search Handoff', code: 'EXPEDIA', status: 'Sample Data', note: 'No live flight search connector is implemented. Results are illustrative and links open provider search.' },
     ];
 
-    const hasLiveFlightKey = Boolean(process.env.SKYSCANNER_API_KEY || process.env.EXPEDIA_API_KEY || process.env.AMADEUS_API_KEY);
-    const overallFlightStatus = hasLiveFlightKey ? 'Connected' : 'Mock/Development';
+    const overallFlightStatus = 'Sample Data';
 
     // 4. Hotel Provider Check
     const hotelProvidersList = [
-      { name: 'Booking.com Adapter', code: 'BOOKING_COM', status: process.env.RAPIDAPI_KEY ? 'Connected' : 'Integration Ready', note: process.env.RAPIDAPI_KEY ? 'Live API key detected.' : 'Adapter ready for RapidAPI key integration.' },
+      { name: 'Booking.com Search Handoff', code: 'BOOKING_COM', status: 'Sample Data', note: 'No live hotel search connector is implemented. Properties and prices are examples; links open provider search.' },
       { name: 'Agoda Adapter', code: 'AGODA', status: 'Mock/Development', note: 'Aggregator matrix adapter with affiliate deep links.' },
       { name: 'MakeMyTrip Stays Adapter', code: 'MMT_HOTELS', status: 'Mock/Development', note: 'Regional hotel & resort pricing engine.' },
       { name: 'Trip.com Stays Adapter', code: 'TRIP_COM_HOTELS', status: 'Mock/Development', note: 'International hotel directory adapter.' },
-      { name: 'Expedia Stays Adapter', code: 'EXPEDIA_HOTELS', status: process.env.EXPEDIA_API_KEY ? 'Connected' : 'Integration Ready', note: process.env.EXPEDIA_API_KEY ? 'Live credentials active.' : 'API connector structure ready.' },
+      { name: 'Expedia Stays Search Handoff', code: 'EXPEDIA_HOTELS', status: 'Sample Data', note: 'No live hotel search connector is implemented. Properties and prices are examples; links open provider search.' },
       { name: 'Hotels.com Adapter', code: 'HOTELS_COM', status: 'Mock/Development', note: 'Hotels.com reward-linked adapter.' },
     ];
 
-    const hasLiveHotelKey = Boolean(process.env.RAPIDAPI_KEY || process.env.EXPEDIA_API_KEY);
-    const overallHotelStatus = hasLiveHotelKey ? 'Connected' : 'Mock/Development';
+    const overallHotelStatus = 'Sample Data';
 
     return ApiResponse.success(res, {
       summary: [
@@ -127,8 +125,8 @@ const getProviderStatus = async (req, res) => {
           category: 'Flight Matrix Engine',
           status: overallFlightStatus,
           activeAdaptersCount: flightProvidersList.length,
-          description: '6 concurrent flight search adapters with AI scoring & deep booking links.',
-          details: hasLiveFlightKey ? 'Operating with live API key configuration.' : 'Operating on simulated multi-carrier fare matrix adapters. Ready for live API keys.',
+          description: 'Sample flight schedules and search links. No live fare inventory is connected.',
+          details: 'Operating on illustrative schedules and fare estimates. No live flight inventory API is connected.',
           adapters: flightProvidersList,
         },
         {
@@ -136,8 +134,8 @@ const getProviderStatus = async (req, res) => {
           category: 'Hospitality & Accommodation Engine',
           status: overallHotelStatus,
           activeAdaptersCount: hotelProvidersList.length,
-          description: '6 concurrent stay search adapters with vibe score algorithms.',
-          details: hasLiveHotelKey ? 'Operating with live API connector.' : 'Operating on simulated stay matrix adapters with direct affiliate booking URLs.',
+          description: 'Sample stay suggestions and search links. No live room inventory is connected.',
+          details: 'Operating on sample property suggestions and estimated nightly prices. No live hotel inventory API is connected.',
           adapters: hotelProvidersList,
         },
         {

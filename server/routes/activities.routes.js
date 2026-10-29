@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const activityController = require('../controllers/activity.controller');
 const { authenticate } = require('../middleware/auth.middleware');
+const requireTripEditor = require('../middleware/requireTripEditor');
 
 // Optional auth for public browsing
 const optionalAuthenticate = (req, res, next) => {
@@ -32,10 +33,10 @@ router.get('/search', optionalAuthenticate, activityController.searchActivities)
 router.post('/search', optionalAuthenticate, activityController.searchActivities);
 
 // Trip integration endpoints
-router.post('/add', authenticate, activityController.addActivityToTrip);
-router.post('/remove', authenticate, activityController.removeActivityFromTrip);
-router.post('/replace', authenticate, activityController.replaceActivityInTrip);
-router.post('/move', authenticate, activityController.moveActivityInTrip);
-router.post('/optimize', authenticate, activityController.optimizeTripActivities);
+router.post('/add', authenticate, requireTripEditor, activityController.addActivityToTrip);
+router.post('/remove', authenticate, requireTripEditor, activityController.removeActivityFromTrip);
+router.post('/replace', authenticate, requireTripEditor, activityController.replaceActivityInTrip);
+router.post('/move', authenticate, requireTripEditor, activityController.moveActivityInTrip);
+router.post('/optimize', authenticate, requireTripEditor, activityController.optimizeTripActivities);
 
 module.exports = router;

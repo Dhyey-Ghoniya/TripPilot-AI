@@ -29,6 +29,13 @@ const tripService = {
     return await api.put(`/trips/${id}`, tripData);
   },
 
+  setSharing: async (id, isPublic) => api.put(`/trips/${id}/sharing`, { isPublic }),
+  getCollaborators: async (id) => api.get(`/trips/${id}/collaborators`),
+  addCollaborator: async (id, email, role = 'editor') => api.post(`/trips/${id}/collaborators`, { email, role }),
+  removeCollaborator: async (id, userId) => api.delete(`/trips/${id}/collaborators/${userId}`),
+  getConversation: async (id) => api.get(`/trips/${id}/conversation`),
+  postConversationMessage: async (id, message) => api.post(`/trips/${id}/conversation`, { message }),
+
   /**
    * Action: Duplicate trip
    */

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const flightController = require('../controllers/flight.controller');
 const { authenticate } = require('../middleware/auth.middleware');
+const requireTripEditor = require('../middleware/requireTripEditor');
 
 // Public / Guest optional search route
 const optionalAuthenticate = (req, res, next) => {
@@ -28,7 +29,7 @@ const optionalAuthenticate = (req, res, next) => {
 };
 
 router.post('/search', optionalAuthenticate, flightController.searchFlights);
-router.post('/attach', authenticate, flightController.attachFlightToTrip);
+router.post('/attach', authenticate, requireTripEditor, flightController.attachFlightToTrip);
 router.post('/ai-command', optionalAuthenticate, flightController.executeAiFlightCommand);
 
 module.exports = router;

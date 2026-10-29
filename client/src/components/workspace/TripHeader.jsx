@@ -17,7 +17,7 @@ import { getG8TripDestinationPhoto } from '../../utils/g8TripDestinationPhotos';
 import ActivityPhoto from '../common/ActivityPhoto';
 import ScrapbookDoodles from '../common/ScrapbookDoodles';
 
-const TripHeader = ({ trip, itinerary, onBookFlights, onShareTrip, onExportTrip, onSaveTrip }) => {
+const TripHeader = ({ trip, itinerary, onBookFlights, onShareTrip, onExportTrip, onSaveTrip, isReadOnly = false }) => {
   if (!trip) return null;
 
   const originName = trip.origin?.name || trip.origin?.city || 'Ahmedabad';
@@ -57,7 +57,7 @@ const TripHeader = ({ trip, itinerary, onBookFlights, onShareTrip, onExportTrip,
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {onSaveTrip && (
+          {!isReadOnly && onSaveTrip && (
             <Button
               variant="outline"
               size="sm"
@@ -79,18 +79,15 @@ const TripHeader = ({ trip, itinerary, onBookFlights, onShareTrip, onExportTrip,
             Export / Print
           </Button>
 
-          <Button
+          {!isReadOnly && <Button
             variant="outline"
             size="sm"
             icon={Share2}
             className="border-[#bca987] text-stone-700 hover:bg-[#f4ead9] hover:text-stone-900"
-            onClick={onShareTrip || (() => {
-              navigator.clipboard.writeText(window.location.href);
-              alert('Trip link copied to clipboard!');
-            })}
+            onClick={onShareTrip}
           >
             Share
-          </Button>
+          </Button>}
 
           {onBookFlights && (
             <Button

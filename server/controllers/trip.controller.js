@@ -84,6 +84,48 @@ class TripController {
     }
   }
 
+  async setSharing(req, res, next) {
+    try {
+      const trip = await tripService.setTripSharing(req.params.id, req.user._id, req.body.isPublic);
+      return ApiResponse.success(res, trip, trip.shareSettings.isPublic ? 'Public sharing enabled' : 'Public sharing disabled');
+    } catch (error) { next(error); }
+  }
+
+  async getCollaborators(req, res, next) {
+    try {
+      const collaborators = await tripService.getCollaborators(req.params.id, req.user._id);
+      return ApiResponse.success(res, { collaborators }, 'Collaborators retrieved');
+    } catch (error) { next(error); }
+  }
+
+  async addCollaborator(req, res, next) {
+    try {
+      const result = await tripService.addCollaborator(req.params.id, req.user._id, req.body.email, req.body.role);
+      return ApiResponse.success(res, result, 'Collaborator added to the trip', 201);
+    } catch (error) { next(error); }
+  }
+
+  async removeCollaborator(req, res, next) {
+    try {
+      const trip = await tripService.removeCollaborator(req.params.id, req.user._id, req.params.userId);
+      return ApiResponse.success(res, trip, 'Collaborator removed');
+    } catch (error) { next(error); }
+  }
+
+  async getConversation(req, res, next) {
+    try {
+      const conversation = await tripService.getTripConversation(req.params.id, req.user._id);
+      return ApiResponse.success(res, { conversation }, 'Trip discussion retrieved');
+    } catch (error) { next(error); }
+  }
+
+  async postConversation(req, res, next) {
+    try {
+      const result = await tripService.postTripConversation(req.params.id, req.user._id, req.body.message);
+      return ApiResponse.success(res, result, 'Message added to trip discussion');
+    } catch (error) { next(error); }
+  }
+
   async exportTrip(req, res, next) {
     try {
       const exportData = await tripService.exportTrip(req.params.id, req.user._id);
