@@ -29,7 +29,6 @@ class TripComProvider extends BaseFlightProvider {
         stopsCount: isDomestic ? 0 : 1,
         price: { amount: basePrice, currency: 'INR' },
         cabinClass: searchParams.cabinClass || 'economy',
-        seatsRemaining: 8,
         bookingUrl,
       },
     ];

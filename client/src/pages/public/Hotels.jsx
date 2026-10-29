@@ -5,7 +5,6 @@ import {
   MapPin,
   Calendar,
   Users,
-  Star,
   Sparkles,
   Shield,
   ExternalLink,
@@ -47,9 +46,7 @@ const Hotels = () => {
   const [rooms, setRooms] = useState('1');
 
   // Filters
-  const [starCategory, setStarCategory] = useState('all');
   const [maxPrice, setMaxPrice] = useState('');
-  const [minRating, setMinRating] = useState('4.0');
   const [propertyType, setPropertyType] = useState('all');
 
   // AI Prompt State
@@ -73,9 +70,7 @@ const Hotels = () => {
         checkOut,
         guests: Number(guests),
         rooms: Number(rooms),
-        minRating: Number(minRating) || 0,
         maxPricePerNight: maxPrice ? Number(maxPrice) : null,
-        starCategory: starCategory !== 'all' ? Number(starCategory) : null,
         accommodationType: propertyType !== 'all' ? propertyType : null,
         ...overrideParams,
       };
@@ -150,7 +145,7 @@ const Hotels = () => {
           </h1>
 
           <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto leading-relaxed">
-            Compare Booking.com, Agoda, MakeMyTrip, Trip.com, Expedia, and Hotels.com. Check rating, location, and estimated nightly rate before you book.
+            Review example stay options, then search provider sites to confirm property details, ratings, availability, and final rates.
           </p>
 
           {/* AI Quick Copilot Command Bar */}
@@ -233,29 +228,7 @@ const Hotels = () => {
             </div>
 
             {/* Filter Row */}
-            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Select
-                label="Star Category"
-                value={starCategory}
-                onChange={(e) => setStarCategory(e.target.value)}
-                options={[
-                  { value: 'all', label: 'All Star Ratings' },
-                  { value: '3', label: '3-Star Properties' },
-                  { value: '4', label: '4-Star Properties' },
-                  { value: '5', label: '5-Star Luxury' },
-                ]}
-              />
-              <Select
-                label="Min Rating"
-                value={minRating}
-                onChange={(e) => setMinRating(e.target.value)}
-                options={[
-                  { value: '0', label: 'Any Rating' },
-                  { value: '4.0', label: '4.0+ Stars' },
-                  { value: '4.5', label: '4.5+ Excellent' },
-                  { value: '4.8', label: '4.8+ Exceptional' },
-                ]}
-              />
+            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
               <Input
                 label="Max Price/Night (₹)"
                 type="number"
@@ -282,7 +255,7 @@ const Hotels = () => {
             <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                 <Shield className="w-4 h-4 text-emerald-500" />
-                <span>6 Provider Adapters • Booking.com, Agoda, MakeMyTrip, Trip.com, Expedia, Hotels.com</span>
+                <span>Sample property options with search links to Booking.com, Agoda, MakeMyTrip, Trip.com, Expedia, and Hotels.com</span>
               </div>
               <Button
                 variant="primary"
@@ -318,13 +291,11 @@ const Hotels = () => {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
           <div>
             <Badge variant="secondary" size="sm" className="mb-2">
-              Hotel Matrix Results ({totalResults})
+              Sample stay options ({totalResults})
             </Badge>
-            <h2 className="text-2xl font-black text-slate-900 dark:text-white">
-              Available Stays & Hotel Fit Evaluation
-            </h2>
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white">Stay examples & fit estimates</h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Evaluated against travel itinerary, day center distances, and airport commuting cost
+              These are sample property suggestions and estimated prices, not live availability. Confirm details with the provider.
             </p>
           </div>
         </div>
@@ -332,7 +303,7 @@ const Hotels = () => {
         {loading ? (
           <div className="py-16 text-center text-slate-400 space-y-3">
             <Sparkles className="w-8 h-8 text-secondary-500 animate-spin mx-auto" />
-            <p className="text-sm font-medium">Aggregating live provider matrix & evaluating Hotel Fit...</p>
+            <p className="text-sm font-medium">Loading stay examples and evaluating itinerary fit...</p>
           </div>
         ) : searchError ? (
           <Card className="p-12 text-center space-y-4">
@@ -367,11 +338,8 @@ const Hotels = () => {
                       {hotel.hotelFit?.fitScore || hotel.vibeScore || 92}% Fit Score
                     </span>
                   </div>
-                  <div className="absolute top-3 right-3 flex items-center gap-1.5">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-500 text-slate-950 font-bold text-xs">
-                      <Star className="w-3 h-3 fill-current" />
-                      {hotel.starRating}★ ({hotel.userRating})
-                    </span>
+                  <div className="absolute top-3 right-3">
+                    <span className="rounded-md bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-950">Sample stay</span>
                   </div>
 
                   <div className="absolute bottom-3 left-3">
@@ -395,9 +363,9 @@ const Hotels = () => {
                     </div>
                     <div className="text-right shrink-0">
                       <div className="text-xl font-black text-slate-900 dark:text-white">
-                        ₹{(hotel.pricePerNight?.amount || hotel.pricePerNight || 0).toLocaleString('en-IN')}
+                        Est. ₹{(hotel.pricePerNight?.amount || hotel.pricePerNight || 0).toLocaleString('en-IN')}
                       </div>
-                      <span className="text-[10px] text-slate-400 block">/ night</span>
+                      <span className="text-[10px] text-slate-400 block">estimated / night</span>
                     </div>
                   </div>
 
@@ -458,7 +426,7 @@ const Hotels = () => {
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition-colors"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
-                        <span>Book on {hotel.providerName}</span>
+                        <span>Search {hotel.providerName}</span>
                       </a>
                     ) : (
                       <span className="text-xs text-slate-400">Direct booking link ready</span>

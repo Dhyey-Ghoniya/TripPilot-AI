@@ -475,6 +475,10 @@ const AttractionsExplorer = () => {
                               Add to Slot
                             </button>
                           </Link>
+                          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+                            <a className="text-[10px] font-semibold text-secondary-700 underline dark:text-secondary-300" href={`https://www.getyourguide.com/s/?q=${encodeURIComponent(`${act.name} ${destination}`)}`} target="_blank" rel="noreferrer">Check listings on GetYourGuide</a>
+                            <a className="text-[10px] font-semibold text-secondary-700 underline dark:text-secondary-300" href={`https://www.klook.com/search/?query=${encodeURIComponent(`${act.name} ${destination}`)}`} target="_blank" rel="noreferrer">Check listings on Klook</a>
+                          </div>
                         </div>
                       ))}
                     </div>

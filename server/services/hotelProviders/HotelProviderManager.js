@@ -33,6 +33,9 @@ class HotelProviderManager {
           providerCode: provider.code,
           providerLogo: provider.logoUrl,
           bookingUrl: provider.generateBookingLink(hotel, searchParams),
+          isIndicativeSuggestion: true,
+          inventoryVerified: false,
+          dataQuality: 'sample_estimate',
         }));
       } catch (err) {
         console.warn(`[HotelProviderManager] ${provider.name} search warning:`, err.message);

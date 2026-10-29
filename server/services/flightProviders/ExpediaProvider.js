@@ -29,7 +29,6 @@ class ExpediaProvider extends BaseFlightProvider {
         stopsCount: 0,
         price: { amount: basePrice, currency: 'INR' },
         cabinClass: searchParams.cabinClass || 'economy',
-        seatsRemaining: 6,
         bookingUrl,
       },
     ];

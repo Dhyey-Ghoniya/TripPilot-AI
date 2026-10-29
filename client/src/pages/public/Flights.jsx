@@ -261,7 +261,7 @@ const Flights = () => {
               Flight Options ({filteredFlights.length})
             </h2>
             <p className="text-xs text-slate-500">
-              {filteredFlights.length} options returned for {origin} → {destination}. Fares and schedules are indicative until confirmed on the booking site.
+              These are illustrative sample schedules and fare estimates, not live flight inventory. Confirm actual flights and fares on a provider site.
             </p>
           </div>
 
@@ -301,7 +301,7 @@ const Flights = () => {
           <div className="py-16 flex flex-col items-center justify-center space-y-3">
             <Spinner size="lg" />
             <span className="text-xs text-slate-400 font-semibold">
-              Querying Ixigo, MakeMyTrip, Cleartrip, Skyscanner, Trip.com & Expedia...
+              Loading illustrative schedules...
             </span>
           </div>
         ) : (
@@ -325,25 +325,21 @@ const Flights = () => {
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-black text-lg text-slate-900 dark:text-white">
-                          {flight.airline}
-                        </span>
-                        <span className="text-xs font-mono text-slate-400">
-                          ({flight.flightNumber})
-                        </span>
+                        <span className="font-black text-lg text-slate-900 dark:text-white">Example schedule</span>
                       </div>
+                      <span className="mt-1 inline-block rounded-md bg-amber-100 px-2 py-1 text-[10px] font-semibold text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">Sample schedule, not live inventory</span>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-[11px] font-bold text-secondary-600 dark:text-secondary-400">
                           {flight.providerCode === 'SKYSCANNER'
-                            ? 'Open Skyscanner to search'
-                            : `Search on ${flight.providerName || flight.provider}`}
+                            ? 'Search Skyscanner'
+                            : `Search ${flight.providerName || flight.provider} for live options`}
                         </span>
                       </div>
                     </div>
 
                     <div className="text-right">
                       <div className="text-2xl font-black text-slate-900 dark:text-white">
-                        ₹{priceAmt.toLocaleString('en-IN')}
+                        Est. ₹{priceAmt.toLocaleString('en-IN')}
                       </div>
                       <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">
                         {flight.cabinClass || 'Economy'}
@@ -399,8 +395,8 @@ const Flights = () => {
                       >
                         <span>
                           {flight.providerCode === 'SKYSCANNER'
-                            ? 'Open Skyscanner to search'
-                            : `Book on ${flight.providerName || 'Provider'}`}
+                            ? 'Search Skyscanner'
+                            : `Search ${flight.providerName || 'Provider'}`}
                         </span>
                         <ExternalLink className="w-3.5 h-3.5" />
                       </a>

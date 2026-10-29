@@ -29,7 +29,6 @@ class CleartripProvider extends BaseFlightProvider {
         stopsCount: 0,
         price: { amount: basePrice, currency: 'INR' },
         cabinClass: searchParams.cabinClass || 'economy',
-        seatsRemaining: 9,
         bookingUrl,
       },
     ];

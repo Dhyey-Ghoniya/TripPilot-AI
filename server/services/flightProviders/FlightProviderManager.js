@@ -52,6 +52,8 @@ class FlightProviderManager {
             score: Math.round(rawScore),
             // These adapters currently return curated estimates, not live inventory.
             isIndicativeEstimate: true,
+            inventoryVerified: false,
+            dataQuality: 'sample_estimate',
             providerName: provider.name,
             providerCode: provider.code,
             providerLogo: provider.logoUrl,
