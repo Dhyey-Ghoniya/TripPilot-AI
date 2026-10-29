@@ -1,6 +1,7 @@
 const AiSession = require('../models/AiSession');
 const travelOrchestrator = require('./travelOrchestrator.service');
 const aiExtractor = require('./aiExtractor.service');
+const llmChat = require('./llmChat.service');
 
 class AiSessionService {
   /**
@@ -46,6 +47,13 @@ class AiSessionService {
     if (!session) {
       session = await this.createOrGetSession(userId, sessionId);
     }
+
+    if (session.userId && userId && String(session.userId) !== String(userId)) {
+      const error = new Error('This planning conversation belongs to another account. Start a new conversation to continue.');
+      error.statusCode = 403;
+      throw error;
+    }
+    if (!session.userId && userId) session.userId = userId;
 
     // Append user message to transcript
     session.messages.push({
@@ -99,13 +107,72 @@ class AiSessionService {
       };
     }
 
+    // Greetings should not be interpreted as a destination or sent to the LLM.
+    // This also repairs an older draft that accidentally stored "hello" as a city.
+    if (extraction.intent === 'GREETING') {
+      if (!effectiveTripId) {
+        session.draftRequirements = extraction.params;
+        session.extractedParams = extraction.params;
+        session.lastAskedField = 'destination';
+        session.missingFields = ['destination'];
+      }
+      session.messages.push({
+        sender: 'assistant',
+        content: extraction.copilotMessage,
+        timestamp: new Date(),
+      });
+      await session.save();
+      return {
+        session,
+        orchestratorResult: {
+          status: 'collecting_requirements',
+          isComplete: false,
+          action: 'ASK_FOLLOW_UP',
+          copilotMessage: extraction.copilotMessage,
+          draftRequirements: extraction.params,
+          missingFields: ['destination'],
+          lastAskedField: 'destination',
+        },
+      };
+    }
+
+    let llmTripTurn = null;
+    let existingTrip = null;
+    if (effectiveTripId && llmChat.enabled) {
+      try {
+        const Trip = require('../models/Trip');
+        existingTrip = await Trip.findById(effectiveTripId).populate('itineraryId');
+        if (existingTrip) llmTripTurn = await llmChat.interpretTripTurn({ message: messageText, trip: existingTrip });
+      } catch (error) {
+        console.warn('[AI session] Could not load trip context for request interpretation:', error.message);
+      }
+    }
+
+    if (llmTripTurn && ['question', 'none'].includes(llmTripTurn.intent)) {
+      const answer = llmTripTurn.reply || 'Could you clarify what you would like to change in this trip?';
+      session.messages.push({ sender: 'assistant', content: answer, timestamp: new Date() });
+      await session.save();
+      return {
+        session,
+        orchestratorResult: {
+          status: 'completed', isComplete: true, action: 'TRIP_QUESTION', copilotMessage: answer,
+          trip: existingTrip, itinerary: existingTrip?.itineraryId,
+        },
+      };
+    }
+
     // ─────────────────────────────────────────────────────────────────
     // 2. HANDLE EXISTING CREATED TRIP COMMANDS (Module 1 features)
     // ─────────────────────────────────────────────────────────────────
     const lowerMsg = (messageText || '').toLowerCase();
+    const llmCommandText = llmTripTurn?.command || ({
+      search_flights: 'find flights', search_hotels: 'find hotels',
+      travel_requirements: 'show travel requirements', checklist: 'show booking checklist',
+    }[llmTripTurn?.intent] || messageText);
     const isExistingTripCmd =
       effectiveTripId &&
-      (lowerMsg.includes('cheaper') ||
+      (Boolean(llmTripTurn && ['update', 'search_flights', 'search_hotels', 'travel_requirements', 'checklist'].includes(llmTripTurn.intent)) ||
+        lowerMsg.includes('cheaper') ||
         lowerMsg.includes('add ') ||
         lowerMsg.includes('remove') ||
         lowerMsg.includes('hotel') ||
@@ -114,17 +181,22 @@ class AiSessionService {
         lowerMsg.includes('checklist') ||
         lowerMsg.includes('visa') ||
         lowerMsg.includes('pack') ||
-        lowerMsg.includes('road trip'));
+        lowerMsg.includes('road trip') ||
+        /\b(rain|raining|indoors|indoor|swap|replace|move|weather|optimi[sz]e|route|change day)\b/.test(lowerMsg));
 
     if (isExistingTripCmd) {
       const orchestratorResult = await travelOrchestrator.orchestrateTripPlanning({
-        prompt: messageText,
+        prompt: llmCommandText,
         userId: userId || session.userId,
         tripId: effectiveTripId,
         sessionParams: accumulatedParams,
         forceSynthesis: false,
       });
 
+      if (!llmTripTurn) {
+        const enhancedReply = await llmChat.improveReply({ message: messageText, result: orchestratorResult, recentMessages: session.messages });
+        if (enhancedReply) orchestratorResult.copilotMessage = enhancedReply;
+      }
       session.messages.push({
         sender: 'assistant',
         content: orchestratorResult.copilotMessage,
@@ -162,6 +234,8 @@ class AiSessionService {
         forceSynthesis: true,
       });
 
+      const enhancedReply = await llmChat.improveReply({ message: messageText, result: orchestratorResult, recentMessages: session.messages });
+      if (enhancedReply) orchestratorResult.copilotMessage = enhancedReply;
       if (orchestratorResult.status === 'completed' && orchestratorResult.trip) {
         session.status = 'completed';
         session.tripId = orchestratorResult.trip._id;
@@ -190,6 +264,9 @@ class AiSessionService {
         missingFields: extraction.missingFields,
         lastAskedField: extraction.lastAskedField,
       };
+
+      const enhancedReply = await llmChat.improveReply({ message: messageText, result: orchestratorResult, recentMessages: session.messages });
+      if (enhancedReply) orchestratorResult.copilotMessage = enhancedReply;
 
       session.messages.push({
         sender: 'assistant',

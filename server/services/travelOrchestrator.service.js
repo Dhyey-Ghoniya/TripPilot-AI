@@ -10,6 +10,7 @@ const mapService = require('./map.service');
 const financeService = require('./finance.service');
 const Trip = require('../models/Trip');
 const Itinerary = require('../models/Itinerary');
+const { assertTripEditAccess } = require('../utils/tripAccess');
 
 class TravelOrchestratorService {
   /**
@@ -57,6 +58,37 @@ class TravelOrchestratorService {
     if (tripId) {
       activeTrip = await Trip.findById(tripId).populate('itineraryId');
       activeItinerary = activeTrip?.itineraryId;
+      if (!activeTrip) throw Object.assign(new Error('Trip not found'), { statusCode: 404 });
+      assertTripEditAccess(activeTrip, userId);
+    }
+
+    // Handle natural-language requests to replace an activity with an indoor option for bad weather.
+    if (activeTrip && activeItinerary && /\b(rain|raining|indoors|indoor)\b/.test(lowerCmd)) {
+      const dayMatch = lowerCmd.match(/day\s*(\d+)/i);
+      const day = dayMatch ? activeItinerary.days.find((item) => item.dayNumber === Number(dayMatch[1])) : null;
+      if (day) {
+        const catalog = await activityService.searchActivities({ destination: activeTrip.destinations?.[0]?.name || '', category: 'all' });
+        const indoorOption = (catalog.results || []).find((item) => item.isIndoor || ['museums', 'shopping', 'entertainment'].includes(String(item.category || '').toLowerCase()));
+        const oldActivity = (day.activities || []).find((item) => !/museum|gallery|market|mall|aquarium|indoor|theater|theatre/i.test(`${item.activity || ''} ${item.category || ''}`));
+        if (indoorOption && oldActivity) {
+          const oldCost = Number(oldActivity.estimatedCost || 0);
+          const newCost = Number(indoorOption.price?.amount || indoorOption.price || 0);
+          oldActivity.activity = indoorOption.name || indoorOption.title;
+          oldActivity.location = indoorOption.location?.address || indoorOption.location?.city || activeTrip.destinations?.[0]?.name;
+          oldActivity.estimatedCost = newCost;
+          oldActivity.notes = 'Indoor alternative suggested for rainy weather. Confirm opening hours and ticket details with the venue.';
+          await activeItinerary.save();
+          if (activeTrip.budget?.breakdown) {
+            activeTrip.budget.breakdown.activities = Math.max(0, Number(activeTrip.budget.breakdown.activities || 0) - oldCost + newCost);
+            await activeTrip.save();
+          }
+          return {
+            status: 'completed', isComplete: true, action: 'WEATHER_ACTIVITY_SWAP', source: 'CURATED_ACTIVITY_CATALOG',
+            copilotMessage: `I replaced one activity on Day ${day.dayNumber} with an indoor option for rainy weather. Confirm the venue's opening hours and tickets before you go.`,
+            structuredData: { activities: [indoorOption], dataQuality: 'curated_suggestion' }, trip: activeTrip, itinerary: activeItinerary,
+          };
+        }
+      }
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -108,7 +140,11 @@ class TravelOrchestratorService {
         type: 'scenic',
       });
 
-      const effectiveUserId = userId || '660000000000000000000001';
+      if (!userId) return {
+        status: 'authentication_required', isComplete: false, action: 'SIGN_IN_TO_SAVE',
+        copilotMessage: 'Your road trip details are ready. Sign in or create an account to save the itinerary to your trip list.',
+      };
+      const effectiveUserId = userId;
       const trip = new Trip({
         userId: effectiveUserId,
         title: `Road Trip: ${effectiveOriginName} to ${effectiveDestName}`,
@@ -425,9 +461,9 @@ class TravelOrchestratorService {
       const country = activeTrip?.destinations?.[0]?.country || 'International';
 
       const requirements = {
-        visa: country === 'India' ? 'Domestic travel — No visa required. Carry valid Govt Photo ID (Aadhaar / Driving License).' : `eVisa / Visa on Arrival available for Indian Passport holders traveling to ${destName}. Apply online prior to travel.`,
-        passportValidity: country === 'India' ? 'Not applicable' : 'Passport must be valid for at least 6 months beyond intended date of departure.',
-        entryRequirements: 'Return flight ticket confirmation, proof of hotel stay, and sufficient travel funds required at immigration.',
+        visa: country === 'India' ? 'For domestic travel within India, a visa is not needed. Carry a valid government photo ID.' : `Visa requirements for ${destName} depend on your passport nationality, travel dates, and itinerary. Check the destination government or embassy website and the official Indian visa advisory before booking. Do not rely on this planner as a visa determination.`,
+        passportValidity: country === 'India' ? 'Not applicable for domestic travel.' : 'Passport validity rules vary by destination and can change. Verify the requirement with the destination government or airline before booking.',
+        entryRequirements: 'Entry rules and document requirements vary by nationality and can change. Confirm them with the destination government or embassy before travel.',
         insurance: 'Travel insurance recommended covering emergency health & flight cancellation.',
         eSIM: 'Pre-book an eSIM or buy local SIM at international arrival terminal.',
         currencyAdvice: `Local currency advice: Carry local payment card or small cash amount for local cabs and street markets.`,
@@ -654,6 +690,14 @@ class TravelOrchestratorService {
       }
     }
 
+    if (activeTrip) {
+      return {
+        status: 'needs_clarification', isComplete: false, action: 'UNSUPPORTED_TRIP_REQUEST',
+        copilotMessage: 'I could not map that request to a supported trip change. Try naming the day and change, or ask me to update the budget, activities, route, flights, hotels, or travel requirements.',
+        trip: activeTrip, itinerary: activeItinerary,
+      };
+    }
+
     // ─────────────────────────────────────────────────────────────────
     // 17. FULL TRIP SYNTHESIS (ANY DESTINATION DYNAMIC PIPELINE)
     // ─────────────────────────────────────────────────────────────────
@@ -739,11 +783,18 @@ class TravelOrchestratorService {
     const budget = budgetRes.data;
 
     // Save Central Trip
-    const effectiveUserId = userId || '660000000000000000000001';
+    if (!userId) return {
+      status: 'authentication_required', isComplete: false, action: 'SIGN_IN_TO_SAVE',
+      copilotMessage: 'Your trip details are ready. Sign in or create an account and I will save this itinerary to your trip list.',
+      extractedParams: params, destinationContext, dataSources: { destination: destinationContext.source || 'LIVE_GEOCODING' },
+    };
+    const effectiveUserId = userId;
     const tripRes = await aiTools.saveTrip(effectiveUserId, {
       destinationContext,
       origin: params.origin,
       durationDays: params.durationDays,
+      startDate: params.startDate,
+      endDate: params.endDate,
       travelersCount: params.travelersCount || 2,
       budget,
       travelStyle: params.travelStyle,

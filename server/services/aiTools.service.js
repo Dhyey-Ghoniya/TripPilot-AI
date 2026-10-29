@@ -646,7 +646,7 @@ class AiToolsService {
           tripPayload.endDate ||
           new Date(Date.now() + (7 + (tripPayload.durationDays || 5)) * 24 * 60 * 60 * 1000),
         durationDays: tripPayload.durationDays || 5,
-        isFlexible: true,
+        isFlexible: !tripPayload.startDate || !tripPayload.endDate,
       },
       travelers: {
         count: tripPayload.travelersCount || 2,

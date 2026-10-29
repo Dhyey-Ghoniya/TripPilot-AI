@@ -1,6 +1,7 @@
 const Expense = require('../models/Expense');
 const Trip = require('../models/Trip');
 const Itinerary = require('../models/Itinerary');
+const { canViewTrip, assertTripEditAccess } = require('../utils/tripAccess');
 
 class FinanceService {
   // ─── CATEGORY CONSTANTS ────────────────────────────────────────────
@@ -35,7 +36,7 @@ class FinanceService {
   async createExpense(userId, tripId, expenseData) {
     const trip = await Trip.findById(tripId);
     if (!trip) throw this._error('Trip not found', 404);
-    if (trip.userId.toString() !== userId.toString()) throw this._error('Access denied', 403);
+    try { assertTripEditAccess(trip, userId); } catch (error) { throw this._error(error.message, 403); }
 
     const expense = new Expense({
       ...expenseData,
@@ -59,8 +60,7 @@ class FinanceService {
     const trip = await Trip.findById(tripId);
     if (!trip) throw this._error('Trip not found', 404);
 
-    // Allow owner or public shared trips
-    if (trip.userId.toString() !== userId.toString() && !trip.shareSettings?.isPublic) {
+    if (!canViewTrip(trip, userId)) {
       throw this._error('Access denied', 403);
     }
 
@@ -86,6 +86,9 @@ class FinanceService {
     const expense = await Expense.findById(expenseId);
     if (!expense) throw this._error('Expense not found', 404);
     if (expense.userId.toString() !== userId.toString()) throw this._error('Access denied', 403);
+    const trip = await Trip.findById(expense.tripId);
+    if (!trip) throw this._error('Trip not found', 404);
+    try { assertTripEditAccess(trip, userId); } catch (error) { throw this._error(error.message, 403); }
 
     const allowedFields = [
       'title', 'description', 'amount', 'currency', 'category',
@@ -112,6 +115,9 @@ class FinanceService {
     const expense = await Expense.findById(expenseId);
     if (!expense) throw this._error('Expense not found', 404);
     if (expense.userId.toString() !== userId.toString()) throw this._error('Access denied', 403);
+    const trip = await Trip.findById(expense.tripId);
+    if (!trip) throw this._error('Trip not found', 404);
+    try { assertTripEditAccess(trip, userId); } catch (error) { throw this._error(error.message, 403); }
 
     const tripId = expense.tripId;
     await Expense.findByIdAndDelete(expenseId);
@@ -129,7 +135,7 @@ class FinanceService {
   async getBudgetDashboard(tripId, userId) {
     const trip = await Trip.findById(tripId).populate('itineraryId');
     if (!trip) throw this._error('Trip not found', 404);
-    if (trip.userId.toString() !== userId.toString() && !trip.shareSettings?.isPublic) {
+    if (!canViewTrip(trip, userId)) {
       throw this._error('Access denied', 403);
     }
 
@@ -240,7 +246,7 @@ class FinanceService {
   async processBudgetCommand(tripId, userId, command) {
     const trip = await Trip.findById(tripId).populate('itineraryId');
     if (!trip) throw this._error('Trip not found', 404);
-    if (userId && trip.userId && trip.userId.toString() !== userId.toString()) throw this._error('Access denied', 403);
+    try { assertTripEditAccess(trip, userId); } catch (error) { throw this._error(error.message, 403); }
 
     const lowerCmd = command.toLowerCase();
     const itinerary = trip.itineraryId;

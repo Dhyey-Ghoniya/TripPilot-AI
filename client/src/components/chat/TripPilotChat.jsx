@@ -362,7 +362,7 @@ const TripPilotChat = ({
                 {sData?.flights?.length > 0 && (
                   <div className="mt-3 space-y-2 w-full">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      Flight Options Matrix
+                      Illustrative flight examples, not live inventory
                     </p>
                     {sData.flights.slice(0, 2).map((fl, fIdx) => (
                       <div
@@ -404,7 +404,7 @@ const TripPilotChat = ({
                 {sData?.hotels?.length > 0 && (
                   <div className="mt-3 space-y-2 w-full">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      Neighborhood Hotel Fit Score
+                      Sample stay estimates, not live availability
                     </p>
                     {sData.hotels.slice(0, 2).map((ht, hIdx) => (
                       <div

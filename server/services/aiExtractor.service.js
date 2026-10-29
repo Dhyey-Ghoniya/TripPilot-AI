@@ -15,10 +15,19 @@ class AiExtractorService {
   extractParameters(promptText = '', currentSessionParams = {}, lastAskedField = null) {
     const text = (promptText || '').trim();
     const lowerText = text.toLowerCase();
+    const greetingOnly = /^(?:hi|hello|hey|hiya|good morning|good afternoon|good evening)[!.\s]*$/i.test(text);
+    const destinationPlaceholder = /^(?:hi|hello|hey|hiya|how are you|good morning|good afternoon|good evening|thanks|thank you|ok|okay|test)$/i;
+    const isCompleteBrief =
+      /\b(?:plan|create|build|make)\b/i.test(text) &&
+      /\b\d+\s*[- ]?days?\b/i.test(text) &&
+      /\b(?:in|to)\s+[A-Za-z]/i.test(text);
 
     // Deep clone session params to accumulate state
     const params = {
-      destination: currentSessionParams.destination || '',
+      // Recover old sessions where a greeting was accidentally saved as the destination.
+      destination: destinationPlaceholder.test(String(currentSessionParams.destination || '').trim())
+        ? ''
+        : currentSessionParams.destination || '',
       additionalCities: currentSessionParams.additionalCities || [],
       origin: currentSessionParams.origin || '',
       durationDays: currentSessionParams.durationDays || null,
@@ -28,12 +37,25 @@ class AiExtractorService {
       currency: currentSessionParams.currency || 'INR',
       travelMonth: currentSessionParams.travelMonth || '',
       travelDates: currentSessionParams.travelDates || '',
+      startDate: currentSessionParams.startDate || null,
+      endDate: currentSessionParams.endDate || null,
       budgetRange: currentSessionParams.budgetRange || 'Moderate',
       travelStyle: currentSessionParams.travelStyle || 'balanced',
       interests: currentSessionParams.interests ? [...currentSessionParams.interests] : [],
       preferredTransport: currentSessionParams.preferredTransport ? [...currentSessionParams.preferredTransport] : [],
       accommodationPreference: currentSessionParams.accommodationPreference ? [...currentSessionParams.accommodationPreference] : [],
     };
+
+    if (greetingOnly) {
+      return {
+        intent: 'GREETING',
+        params,
+        missingFields: ['destination'],
+        lastAskedField: 'destination',
+        isReadyToPlan: false,
+        copilotMessage: 'Hi! I can help plan your trip. Which destination would you like to visit?',
+      };
+    }
 
     // ─────────────────────────────────────────────────────────────────
     // 0. INTENT RECOGNITION
@@ -112,7 +134,7 @@ class AiExtractorService {
     // ─────────────────────────────────────────────────────────────────
     // 1. CONTEXTUAL FOLLOW-UP EXTRACTION (Based on lastAskedField)
     // ─────────────────────────────────────────────────────────────────
-    if (lastAskedField && !isProceedRequested && intent !== 'GENERAL_QUESTION') {
+    if (lastAskedField && !isProceedRequested && intent !== 'GENERAL_QUESTION' && !isCompleteBrief) {
       intent = 'ANSWER_FOLLOW_UP';
 
       if (lastAskedField === 'destination') {
@@ -218,22 +240,24 @@ class AiExtractorService {
     else if (params.travelersCount > 2) params.travelersType = 'group';
 
     // Origin (e.g. "from Ahmedabad", "from Mumbai", "from Ahmedabad, India")
-    const originMatch = text.match(/from\s+([A-Za-z\s,\-\']+?)(?=\s+to|\s+for|\s+under|\s+with|\s+in|\.|$)/i);
+    const originMatch = text.match(/from\s+([A-Za-z][A-Za-z\s\-']*?)(?=,|\s+(?:to|for|under|with|in|on|during)\b|\.|$)/i);
     if (originMatch) {
       params.origin = originMatch[1].replace(/,$/g, '').trim();
     }
 
     // Destination Extraction
     let extractedDest = '';
-    const roadTripMatch = text.match(/road\s+trip\s+from\s+[A-Za-z\s,\-\']+\s+to\s+([A-Za-z\s,\-\']+?)(?=\s+for|\s+under|\s+with|\.|$)/i);
-    const planTripToMatch = text.match(/(?:plan|create|build|make)\s+(?:a\s+)?(?:\d+-day\s+)?(?:trip|honeymoon|vacation|getaway|itinerary)?\s*(?:to|in)?\s*([A-Za-z\s,\-\']+?)(?=\s+from|\s+for|\s+under|\s+with|\.|$)/i);
-    const visitMatch = text.match(/(?:want\s+to\s+visit|want\s+to\s+explore|visit|explore)\s+([A-Za-z\s,\-\']+?)(?=\s+from|\s+for|\s+under|\s+in|\.|$)/i);
-    const genericToMatch = text.match(/\bto\s+([A-Za-z\s,\-\']+?)(?=\s+from|\s+for|\s+under|\s+with|\s+in|\.|$)/i);
+    const roadTripMatch = text.match(/road\s+trip\s+from\s+[A-Za-z\s,\-']+?\s+to\s+([A-Za-z][A-Za-z\s\-']*?)(?=,|\s+(?:for|under|with|in|on|during)\b|\.|$)/i);
+    const planTripToMatch = text.match(/(?:plan|create|build|make)\s+(?:a\s+)?(?:(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s*[- ]?days?\s+)?(?:trip|honeymoon|vacation|getaway|itinerary)?\s*(?:to|in)\s+([A-Za-z][A-Za-z\s\-']*?)(?=,|\s+(?:from|for|under|with|on|during)\b|\.|$)/i);
+    const visitMatch = text.match(/(?:want\s+to\s+visit|want\s+to\s+explore|visit|explore)\s+([A-Za-z][A-Za-z\s\-']*?)(?=,|\s+(?:from|for|under|with|in|on|during)\b|\.|$)/i);
+    const genericToMatch = text.match(/\bto\s+([A-Za-z][A-Za-z\s\-']*?)(?=,|\s+(?:from|for|under|with|on|during)\b|\.|$)/i);
+    const genericInMatch = text.match(/\bin\s+([A-Za-z][A-Za-z\s\-']*?)(?=,|\s+(?:from|for|under|with|in|on|during)\b|\.|$)/i);
 
     if (roadTripMatch) extractedDest = roadTripMatch[1];
     else if (planTripToMatch) extractedDest = planTripToMatch[1];
     else if (visitMatch) extractedDest = visitMatch[1];
     else if (genericToMatch) extractedDest = genericToMatch[1];
+    else if (genericInMatch) extractedDest = genericInMatch[1];
 
     if (extractedDest) {
       extractedDest = extractedDest
@@ -248,9 +272,9 @@ class AiExtractorService {
 
     // Budget & Currency
     const lakhMatch = text.match(/(?:under|budget|around|max)?\s*(?:₹|inr|rs\.?)?\s*([\d.]+)\s*(?:lakh|lac|l)/i);
-    const inrMatch = text.match(/(?:under|budget|around|max)?\s*(?:₹|inr|rs\.?)\s*([\d,]+)/i);
-    const usdMatch = text.match(/(?:under|budget|around|max)?\s*\$\s*([\d,]+)/i);
-    const rawNumberBudget = text.match(/(?:under|budget|max|below)\s*([\d,]+)/i);
+    const inrMatch = text.match(/(?:₹|\binr\b|\brs\.?)\s*([\d,]+)/i) || text.match(/\b(?:budget|under|around|max|below)(?:\s+of)?\s+([\d,]+)/i);
+    const usdMatch = text.match(/(?:\$|\busd\b)\s*([\d,]+)/i);
+    const rawNumberBudget = text.match(/(?:under|budget|max|below)(?:\s+of)?\s*([\d,]+)/i);
 
     if (lakhMatch) {
       params.budget = Math.round(parseFloat(lakhMatch[1]) * 100000);
@@ -270,6 +294,51 @@ class AiExtractorService {
     const monthMatch = text.match(/\b(january|february|march|april|may|june|july|august|september|october|november|december)\b/i);
     if (monthMatch) {
       params.travelMonth = monthMatch[1].charAt(0).toUpperCase() + monthMatch[1].slice(1).toLowerCase();
+    }
+
+    const monthNumbers = {
+      january: 1, february: 2, march: 3, april: 4, may: 5, june: 6,
+      july: 7, august: 8, september: 9, october: 10, november: 11, december: 12,
+    };
+    const explicitDateRange = text.match(
+      /\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})(?:st|nd|rd|th)?\s*(?:to|through|until|[-–])\s*(?:(january|february|march|april|may|june|july|august|september|october|november|december)\s+)?(\d{1,2})(?:st|nd|rd|th)?(?:,?\s+(20\d{2}))?/i
+    );
+    if (explicitDateRange) {
+      const startMonth = monthNumbers[explicitDateRange[1].toLowerCase()];
+      const startDay = Number(explicitDateRange[2]);
+      const endMonth = monthNumbers[(explicitDateRange[3] || explicitDateRange[1]).toLowerCase()];
+      const endDay = Number(explicitDateRange[4]);
+      const currentYear = new Date().getFullYear();
+      let startYear = Number(explicitDateRange[5] || currentYear);
+      let endYear = startYear;
+      if (endMonth < startMonth) endYear += 1;
+
+      const makeIsoDate = (year, month, day) => {
+        const date = new Date(Date.UTC(year, month - 1, day));
+        return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+          ? date.toISOString()
+          : null;
+      };
+      const startDate = makeIsoDate(startYear, startMonth, startDay);
+      const endDate = makeIsoDate(endYear, endMonth, endDay);
+      if (startDate && endDate && new Date(endDate) >= new Date(startDate)) {
+        params.startDate = startDate;
+        params.endDate = endDate;
+        params.travelDates = `${startDate.slice(0, 10)} to ${endDate.slice(0, 10)}`;
+        params.travelMonth = new Date(startDate).toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
+        if (!explicitDateRange[5] && new Date(startDate) < new Date()) {
+          const nextStartYear = startYear + 1;
+          const nextEndYear = endYear + 1;
+          const nextStart = makeIsoDate(nextStartYear, startMonth, startDay);
+          const nextEnd = makeIsoDate(nextEndYear, endMonth, endDay);
+          if (nextStart && nextEnd) {
+            params.startDate = nextStart;
+            params.endDate = nextEnd;
+            params.travelDates = `${nextStart.slice(0, 10)} to ${nextEnd.slice(0, 10)}`;
+            params.travelMonth = new Date(nextStart).toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
+          }
+        }
+      }
     }
 
     // ─────────────────────────────────────────────────────────────────

@@ -32,18 +32,21 @@ Per system architecture rules, features and external provider integrations are t
 
 | Feature / Subsystem | Integration Status | Data Source / Engine | Description |
 |---|---|---|---|
-| **AI Travel Orchestrator** | `Implemented` | Node.js + Mongoose + Custom AI Engine | Extracts parameters, resolves destinations, and generates multi-domain trip blueprints. |
+| **Trip planning chat** | `Implemented` / `Optional LLM` | Deterministic planner, optional Gemini or OpenAI API | Works without a key; with a provider key, the assistant can interpret free-form trip requests and improve chat responses. Trip actions remain server-validated. |
 | **Destination Resolver** | `Implemented` | DB + Global Knowledge Bank + Synthesizer | Resolves ANY destination worldwide (Tokyo, Paris, Bali, Dubai, etc.). Zero locations fail or are rejected. |
 | **AI Command Execution** | `Implemented` | `aiTools.service` + `travelOrchestrator` | Real-time execution of natural language updates ("Make Day 3 cheaper", "Add a beach", "Optimize route"). |
 | **Map & Route Engine** | `Implemented` | OpenStreetMap + OSRM Engine | Live routing & Haversine distance calculation across 7 transit modes (Walking, Taxi, Car, Metro, etc.). |
 | **Weather API** | `Implemented` | Open-Meteo REST API | Live current weather and 7-day weather forecasts with outdoor activity advisories. |
-| **Flight Search Matrix** | `Integration-ready` | Multi-Adapter Matrix Engine | Standardized flight adapter for Ixigo, MakeMyTrip, Cleartrip, Skyscanner, Trip.com, Expedia. (Mock/Development fallback active; live API keys supported). |
-| **Hotel Search Matrix** | `Integration-ready` | Multi-Adapter Matrix Engine | Standardized stay adapter for Booking.com, Agoda, MakeMyTrip, Trip.com, Expedia, Hotels.com with Hotel Fit Intelligence. |
+| **Flight search** | `Sample data` | Illustrative schedules and partner search handoffs | No live flight inventory provider is connected. Current entries are examples, not available flights or fares. A provider integration must be implemented before a key can enable live results. |
+| **Hotel search** | `Sample data` | Example properties and provider search handoffs | No live room inventory provider is connected. Current entries, ratings, and prices must not be treated as live property data. |
+| **Activities** | `Curated suggestions` | Local catalog plus ticket search links | Suggestions are not verified listings or availability. Ticket searches open Klook or GetYourGuide; booking is completed and confirmed with them. |
+| **Group trip planning** | `Implemented` | Trip collaborators and shared discussion | Trip owners can add existing TripPilot accounts as editors or viewers. Members can discuss plans; mention `@vani` to ask the assistant to work on the itinerary. |
+| **Entry requirements** | `Safety guidance` | Official-source verification prompt | TripPilot does not claim visa eligibility. Travelers are directed to verify rules with destination government or embassy sources. |
 | **Budget & Expense Allocations** | `AI estimate` / `Implemented` | `finance.service.js` | AI-generated budget breakdowns with multi-currency support, expense logging, and group splitting. |
 | **Social Sharing & Journals** | `Implemented` | MongoDB + JWT Auth | Unique 8-character share codes, public blueprint view, travel journal entries, and photo logs. |
 | **Administrative Control Center** | `Implemented` | `/api/admin/*` + React Admin Portal | Full user control, provider health checks, travel collections curation, content moderation, system configs. |
 
-*Note: Provider status transparency is strictly enforced. Live API keys (e.g., `SKYSCANNER_API_KEY`, `RAPIDAPI_KEY`, `EXPEDIA_API_KEY`) automatically upgrade status from `Mock/Development` / `Integration-ready` to `Connected`.*
+*Provider keys do not automatically enable live inventory. The current flight and hotel adapters return sample data, regardless of credentials. Implement a provider's API client and verify it before describing its results as live.*
 
 ---
 
@@ -95,7 +98,7 @@ TripPilot AI features an original, dark-mode-first aesthetic crafted specificall
 ## ⚡ Quick Start & Development Setup
 
 ### 1. Environment Configuration
-Create or verify `.env` in `server/`:
+Copy `server/.env.example` to `server/.env` and fill in the local database and JWT settings:
 ```env
 PORT=5000
 NODE_ENV=development
@@ -104,6 +107,24 @@ JWT_SECRET=trippilot_super_secret_jwt_key_2026_dev_secure
 JWT_EXPIRES_IN=7d
 CLIENT_URL=http://localhost:5173
 ```
+
+### Optional LLM chat responses (Gemini or OpenAI)
+
+For a Google AI Studio key:
+
+1. Create a Gemini API key in [Google AI Studio](https://aistudio.google.com/apikey).
+2. Add `LLM_PROVIDER=google`, `GOOGLE_API_KEY=...`, and `GEMINI_MODEL=gemini-3.6-flash` to `server/.env`.
+3. Restart the backend. The code calls Gemini from the server using Google's `generateContent` endpoint. It never sends the key to the client.
+
+Alternatively, create an API key from the [OpenAI API keys page](https://platform.openai.com/api-keys), set `LLM_PROVIDER=openai` and `OPENAI_API_KEY=...` in `server/.env`, then restart.
+
+Without an LLM key, the deterministic planner still works. With one, the model can interpret free-form trip requests and improve chat responses; itinerary changes and trip permissions remain validated by the server. Prompts and relevant trip/itinerary context are sent to the selected LLM provider when enabled. Never put a key in `client/.env`, source code, or GitHub.
+
+OpenAI API billing is separate from a ChatGPT subscription. See [OpenAI's billing explanation](https://help.openai.com/en/articles/9039756-managing-billing-for-chatgpt-and-the-api-platform). For Gemini, see Google's [API key safety guide](https://ai.google.dev/gemini-api/docs/api-key) and [model list](https://ai.google.dev/gemini-api/docs/models).
+
+### Live flight and hotel inventory
+
+There is no provider key to paste in today: setting `SKYSCANNER_API_KEY`, `EXPEDIA_API_KEY`, or `RAPIDAPI_KEY` alone will not change the sample adapters. To add live results, choose a supplier that accepts your application, obtain its API credentials and commercial/affiliate approval, then implement its search API in `server/services/flightProviders/` or `server/services/hotelProviders/`. Keep credentials in `server/.env`, normalize results into the existing provider schema, and return `inventoryVerified: true` only for API responses. Provider access is subject to each supplier's eligibility and terms.
 
 ### 2. Start Backend API Server
 ```bash
