@@ -74,6 +74,10 @@ const TripPilotChat = ({
 
   // Restore the guest conversation and finish it under the signed-in user's account.
   useEffect(() => {
+    // A destination-card launch starts a new plan. Do not hydrate an unrelated
+    // unfinished guest conversation into that fresh destination context.
+    if (initialPrompt.trim()) return;
+
     const pending = getPendingTripSession();
     if (!pending) return;
 
@@ -131,7 +135,7 @@ const TripPilotChat = ({
     };
 
     resumePendingPlan();
-  }, [isAuthenticated, addToast]);
+  }, [isAuthenticated, addToast, initialPrompt]);
 
   // Auto-scroll chat transcript internally (never scrolls window)
   useEffect(() => {

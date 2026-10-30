@@ -127,7 +127,7 @@ const Home = () => (
       </div>
       <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {DESTINATIONS.map((destination) => (
-          <Link key={destination.name} to={`/explore?destination=${encodeURIComponent(destination.name)}`} className="scrapbook-paper scrapbook-wiggle group overflow-hidden transition-transform duration-200 dark:bg-stone-900">
+          <Link key={destination.name} to={`/plan-trip?destination=${encodeURIComponent(destination.name)}`} className="scrapbook-paper scrapbook-wiggle group overflow-hidden transition-transform duration-200 dark:bg-stone-900">
             <div className={`relative h-40 overflow-hidden ${destination.tone}`}>
               <div className={`absolute right-4 top-4 flex h-9 w-9 items-center justify-center border border-white/70 bg-white/60 ${destination.accent}`}><MapPin className="h-4 w-4" /></div>
               <div className="absolute inset-0"><DestinationPhoto destination={destination.name} src={destination.photo} /></div>

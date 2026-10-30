@@ -188,6 +188,7 @@ class ImageService {
           url,
           sourceUrl: info.descriptionurl,
           title: stripHtml(metadata.ObjectName?.value || page.title.replace(/^File:/, '')),
+          fileTitle: page.title.replace(/^File:/, ''),
           attribution: artist,
           licenseName,
           licenseUrl,
@@ -197,6 +198,27 @@ class ImageService {
       console.warn('[ImageService] Wikimedia Commons activity photo search failed:', error.message);
       return [];
     }
+  }
+
+  async fetchVerifiedHotelPhoto(hotelName, destination = '') {
+    const query = `${hotelName} ${destination} hotel`;
+    const photos = await this.searchWikimediaCommons(query, destination);
+    const genericTerms = new Set(['hotel', 'resort', 'guesthouse', 'guest', 'house', 'hostel', 'apartments', 'apartment', 'the', 'and', 'of', 'in', 'at']);
+    const hotelTerms = hotelName
+      .toLowerCase()
+      .replace(/[^a-z0-9 ]/g, ' ')
+      .split(/\s+/)
+      .filter((term) => term.length > 2 && !genericTerms.has(term));
+
+    if (hotelTerms.length === 0) return null;
+
+    return photos.find((photo) => {
+      const searchable = `${photo.title} ${photo.fileTitle}`.toLowerCase().replace(/[^a-z0-9 ]/g, ' ');
+      const matchedTerms = hotelTerms.filter((term) => searchable.includes(term));
+      const coverage = matchedTerms.length / hotelTerms.length;
+      const hasDistinctiveTerm = matchedTerms.some((term) => term.length >= 5);
+      return coverage >= 0.75 && hasDistinctiveTerm;
+    }) || null;
   }
 
   /**

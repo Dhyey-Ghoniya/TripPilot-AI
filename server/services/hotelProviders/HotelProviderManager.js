@@ -1,29 +1,18 @@
-const bookingProvider = require('./BookingProvider');
-const agodaProvider = require('./AgodaProvider');
-const makeMyTripProvider = require('./MakeMyTripProvider');
-const tripComProvider = require('./TripComProvider');
-const expediaProvider = require('./ExpediaProvider');
-const hotelsComProvider = require('./HotelsComProvider');
+const openStreetMapProvider = require('./OpenStreetMapProvider');
 
 class HotelProviderManager {
   constructor() {
-    this.providers = [
-      bookingProvider,
-      agodaProvider,
-      makeMyTripProvider,
-      tripComProvider,
-      expediaProvider,
-      hotelsComProvider,
-    ];
+    this.providers = [openStreetMapProvider];
   }
 
   /**
-   * Search hotels across all 6 provider adapters concurrently.
+   * Search real lodging directory records without presenting mock hotels as live inventory.
    * Standardizes results and generates deep booking links.
    * @param {object} searchParams
    * @returns {Promise<Array<object>>} Combined hotel matrix
    */
   async searchAllProviders(searchParams) {
+    const providerErrors = [];
     const resultsPromises = this.providers.map(async (provider) => {
       try {
         const hotels = await provider.searchHotels(searchParams);
@@ -32,13 +21,14 @@ class HotelProviderManager {
           providerName: provider.name,
           providerCode: provider.code,
           providerLogo: provider.logoUrl,
-          bookingUrl: provider.generateBookingLink(hotel, searchParams),
-          isIndicativeSuggestion: true,
+          bookingUrl: hotel.bookingUrl || null,
+          isIndicativeSuggestion: false,
           inventoryVerified: false,
-          dataQuality: 'sample_estimate',
+          dataQuality: hotel.dataQuality || 'directory_listing',
         }));
       } catch (err) {
         console.warn(`[HotelProviderManager] ${provider.name} search warning:`, err.message);
+        providerErrors.push(err);
         return [];
       }
     });
@@ -46,8 +36,11 @@ class HotelProviderManager {
     const nestedResults = await Promise.all(resultsPromises);
     const aggregated = nestedResults.flat();
 
-    // Sort by vibeScore / userRating descending by default
-    return aggregated.sort((a, b) => (b.vibeScore || b.userRating * 20) - (a.vibeScore || a.userRating * 20));
+    if (aggregated.length === 0 && providerErrors.length === this.providers.length) {
+      throw new Error(`Hotel directory search failed: ${providerErrors[0].message}`);
+    }
+
+    return aggregated;
   }
 }
 

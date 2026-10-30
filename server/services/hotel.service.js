@@ -59,7 +59,10 @@ class HotelService {
       rawResults = rawResults.filter((h) => (h.userRating || h.rating || 0) >= formattedParams.minRating);
     }
     if (formattedParams.maxPricePerNight) {
-      rawResults = rawResults.filter((h) => (h.pricePerNight?.amount || h.pricePerNight || 0) <= formattedParams.maxPricePerNight);
+      rawResults = rawResults.filter((h) => {
+        const nightlyPrice = h.pricePerNight?.amount || h.pricePerNight;
+        return nightlyPrice !== null && nightlyPrice !== undefined && Number.isFinite(Number(nightlyPrice)) && Number(nightlyPrice) <= formattedParams.maxPricePerNight;
+      });
     }
     if (formattedParams.starCategory) {
       rawResults = rawResults.filter((h) => h.starRating === formattedParams.starCategory);
@@ -87,10 +90,9 @@ class HotelService {
     }
 
     const scoredResults = rawResults.map((hotel) => {
-      const fit = this.getHotelFit(hotel, trip, nights);
       return {
         ...hotel,
-        hotelFit: fit,
+        hotelFit: hotel.pricePerNight ? this.getHotelFit(hotel, trip, nights) : null,
       };
     });
 
@@ -208,6 +210,7 @@ class HotelService {
     const nights = trip.dates?.durationDays || 3;
     const pricePerNight = Number(hotelData.pricePerNight?.amount || hotelData.pricePerNight || 0);
     const totalCost = Number(hotelData.totalCost || pricePerNight * nights);
+    const hasVerifiedPrice = Number.isFinite(pricePerNight) && pricePerNight > 0;
 
     const lat = hotelData.coordinates?.lat || trip.destinations?.[0]?.coordinates?.lat || 0;
     const lng = hotelData.coordinates?.lng || trip.destinations?.[0]?.coordinates?.lng || 0;
@@ -221,10 +224,10 @@ class HotelService {
       checkOut: trip.dates?.endDate || new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
       pricePerNight,
       totalCost,
-      rating: hotelData.userRating || hotelData.rating || 4.5,
+      rating: hotelData.userRating || hotelData.rating || null,
       coordinates: { lat, lng },
       imageUrl: hotelData.coverImage || hotelData.images?.[0] || '',
-      bookingReference: `HTL-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+      bookingReference: '',
       status: 'shortlisted',
       bookingUrl: hotelData.bookingUrl || '',
     }];
@@ -232,7 +235,7 @@ class HotelService {
     trip.hotelSearchId = hotelData.searchId || trip.hotelSearchId;
 
     // Update budget breakdown & total spent
-    if (trip.budget) {
+    if (trip.budget && hasVerifiedPrice) {
       trip.budget.breakdown.hotel = totalCost;
       trip.budget.spent =
         (trip.budget.breakdown.flights || 0) +
@@ -256,8 +259,8 @@ class HotelService {
     ];
 
     // Update transport estimate notes
-    const hotelFit = this.getHotelFit(hotelData, trip, nights);
-    if (trip.transport) {
+    const hotelFit = hasVerifiedPrice ? this.getHotelFit(hotelData, trip, nights) : null;
+    if (trip.transport && hotelFit) {
       trip.transport.estimatedCost = (trip.transport.estimatedCost || 0) + hotelFit.estimatedDailyTransportCost * nights;
       trip.transport.notes = `Stay at ${trip.hotels[0].name} (${hotelFit.estimatedTransportImpact})`;
     }
@@ -266,7 +269,9 @@ class HotelService {
 
     return {
       success: true,
-      message: `Hotel ${trip.hotels[0].name} attached to trip "${trip.title}"! Budget & map updated.`,
+      message: hasVerifiedPrice
+        ? `Hotel ${trip.hotels[0].name} added to trip "${trip.title}". Budget and map updated.`
+        : `Hotel ${trip.hotels[0].name} added to trip "${trip.title}". Verify room prices and availability with the provider.`,
       trip,
       attachedHotel: trip.hotels[0],
       hotelFit,
