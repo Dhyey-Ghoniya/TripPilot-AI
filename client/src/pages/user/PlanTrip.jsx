@@ -6,7 +6,7 @@ import TripPilotChat from '../../components/chat/TripPilotChat';
 const PlanTrip = () => {
   const [searchParams] = useSearchParams();
   const destination = searchParams.get('destination')?.trim() || '';
-  const initialPrompt = destination ? `Plan a trip to ${destination}.` : '';
+  const initialPrompt = destination ? `Plan a trip to ${destination}` : '';
 
   return (
     <div className="min-h-screen bg-[#fffaf4] py-10 pb-20 dark:bg-slate-950 sm:py-14">
@@ -26,6 +26,7 @@ const PlanTrip = () => {
         <TripPilotChat
           key={initialPrompt || 'new-trip'}
           initialPrompt={initialPrompt}
+          autoSendInitialPrompt={Boolean(destination)}
           title="TripPilot travel desk"
           className="max-w-5xl rounded-2xl border-[#eadfd3] bg-white p-5 shadow-xl sm:p-7"
         />

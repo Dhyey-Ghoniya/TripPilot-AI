@@ -2,6 +2,7 @@ const HotelSearch = require('../models/HotelSearch');
 const Trip = require('../models/Trip');
 const Itinerary = require('../models/Itinerary');
 const hotelProviderManager = require('./hotelProviders/HotelProviderManager');
+const { applyAffiliateTracking, hasActiveAffiliateLinks } = require('./affiliateLinks.service');
 
 class HotelService {
   /**
@@ -117,6 +118,7 @@ class HotelService {
       searchParams: formattedParams,
       totalResults: scoredResults.length,
       results: scoredResults,
+      affiliateDisclosure: hasActiveAffiliateLinks(),
     };
   }
 
@@ -449,7 +451,7 @@ class HotelService {
         currency: 'INR',
         isVerifiedOffer: !topHotel.isIndicativeSuggestion,
         isIndicativeSuggestion: Boolean(topHotel.isIndicativeSuggestion),
-        bookingUrl: topHotel.bookingUrl || `https://www.trip.com/hotels/${encodeURIComponent(dest.name)}`,
+        bookingUrl: applyAffiliateTracking(topHotel.bookingUrl || `https://www.trip.com/hotels/${encodeURIComponent(dest.name)}`, 'booking'),
         bookingStatus: 'needs_booking',
         distanceToNextDestinationKm: distanceToNextKm,
         isDepartureNight: isLastDest,

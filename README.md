@@ -126,6 +126,10 @@ OpenAI API billing is separate from a ChatGPT subscription. See [OpenAI's billin
 
 Live flight prices are not connected. Flight search returns outbound links to Google Flights, Skyscanner, MakeMyTrip, Cleartrip, ixigo, and Trip.com; provider search details must be entered on those sites. To add live prices later, a developer needs an approved provider account and API key, a server-side adapter, and verified results marked `isLive = true`. A key alone does not provide inventory access.
 
+### Currency display and affiliate links
+
+Budget display conversion uses the European Central Bank's documented public reference-rate data endpoint, fetched by the server and cached for 12 hours. Converted values are approximate and do not change saved budget amounts. A failed rates request leaves the original currency in place. Partner tracking is optional; blank variables in `server/.env` keep links untracked. Booking.com tracking uses its documented `aid` link parameter. Agoda, GetYourGuide, and Klook tracking parameters remain unimplemented until their affiliate dashboards confirm the exact formats.
+
 ### Live hotel inventory
 
 There is no provider key to paste in today: setting an API key alone does not change sample hotel data. To add live hotel results, choose a supplier that accepts your application, obtain its API credentials and commercial/affiliate approval, then implement its search API in `server/services/hotelProviders/`. Keep credentials in `server/.env`, normalize results into the provider schema, and return `inventoryVerified: true` only for API responses. Provider access is subject to each supplier's eligibility and terms.

@@ -22,6 +22,7 @@ import {
   CloudSun,
 } from 'lucide-react';
 import Button from '../../components/ui/Button';
+import affiliateLinksService from '../../services/affiliateLinksService';
 import Select from '../../components/ui/Select';
 import Input from '../../components/ui/Input';
 import Badge from '../../components/ui/Badge';
@@ -476,8 +477,8 @@ const AttractionsExplorer = () => {
                             </button>
                           </Link>
                           <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
-                            <a className="text-[10px] font-semibold text-secondary-700 underline dark:text-secondary-300" href={`https://www.getyourguide.com/s/?q=${encodeURIComponent(`${act.name} ${destination}`)}`} target="_blank" rel="noreferrer">Check listings on GetYourGuide</a>
-                            <a className="text-[10px] font-semibold text-secondary-700 underline dark:text-secondary-300" href={`https://www.klook.com/search/?query=${encodeURIComponent(`${act.name} ${destination}`)}`} target="_blank" rel="noreferrer">Check listings on Klook</a>
+                            <a className="text-[10px] font-semibold text-secondary-700 underline dark:text-secondary-300" href={affiliateLinksService.getTourRedirectUrl('getyourguide', `${act.name} ${destination}`)} target="_blank" rel="noopener noreferrer sponsored">Check listings on GetYourGuide</a>
+                            <a className="text-[10px] font-semibold text-secondary-700 underline dark:text-secondary-300" href={affiliateLinksService.getTourRedirectUrl('klook', `${act.name} ${destination}`)} target="_blank" rel="noopener noreferrer sponsored">Check listings on Klook</a>
                           </div>
                         </div>
                       ))}

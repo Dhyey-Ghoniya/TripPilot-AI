@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
@@ -15,6 +15,7 @@ import TripPilotChat from '../../components/chat/TripPilotChat';
 import { getG8TripDestinationPhoto } from '../../utils/g8TripDestinationPhotos';
 import ScrapbookDoodles from '../../components/common/ScrapbookDoodles';
 import DestinationPhoto from '../../components/common/DestinationPhoto';
+import destinationService from '../../services/destinationService';
 
 const FEATURED_PHOTOS = ['Japan', 'Rome', 'Phuket'];
 const commonsFile = (filename) => `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=900`;
@@ -58,7 +59,30 @@ const START_LINKS = [
   { label: 'Explore places', detail: 'Browse destinations and ideas', icon: MapPin, to: '/explore' },
 ];
 
-const Home = () => (
+const Home = () => {
+  const [destinations, setDestinations] = useState(DESTINATIONS);
+  const [hasRankedDestinations, setHasRankedDestinations] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    destinationService.getFeaturedDestinations(4)
+      .then((response) => {
+        const ranked = response?.data?.destinations || [];
+        if (!active || ranked.length === 0) return;
+        setDestinations(ranked.map((destination) => ({
+          name: destination.name,
+          detail: destination.shortDescription || destination.description,
+          photo: destination.coverImage || destination.images?.[0] || '',
+          tone: 'bg-stone-200 dark:bg-stone-800',
+          accent: 'text-teal-800 dark:text-teal-200',
+        })));
+        setHasRankedDestinations(true);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  return (
   <div className="overflow-hidden bg-[#E9DCC4] text-stone-900 dark:bg-stone-950 dark:text-white">
     <section className="relative border-b border-[#bca987] bg-[#e9dcc4] dark:border-stone-700 dark:bg-stone-900">
       <div className="page-shell relative grid gap-10 py-10 sm:py-14 lg:grid-cols-[.9fr_1.1fr] lg:items-center lg:gap-14 lg:py-16">
@@ -121,22 +145,22 @@ const Home = () => (
       <div className="flex flex-col justify-between gap-5 border-b border-dashed border-[#bca987] pb-6 dark:border-stone-800 sm:flex-row sm:items-end">
         <div>
           <p className="font-scrap-note text-xl font-bold text-secondary-800 dark:text-secondary-300">A starting point</p>
-          <h2 className="mt-3 max-w-2xl font-display text-3xl font-bold tracking-[-0.04em] text-stone-950 dark:text-white sm:text-4xl">Choose a place. Build the days around it.</h2>
+          <h2 className="mt-3 max-w-2xl font-display text-3xl font-bold tracking-[-0.04em] text-stone-950 dark:text-white sm:text-4xl">{hasRankedDestinations ? 'Trending destinations' : 'Popular picks'}</h2>
         </div>
         <Link to="/explore" className="inline-flex items-center gap-2 text-sm font-bold text-secondary-800 hover:text-secondary-900 dark:text-secondary-300 dark:hover:text-secondary-200">Explore all destinations <ArrowRight className="h-4 w-4" /></Link>
       </div>
       <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {DESTINATIONS.map((destination) => (
-          <Link key={destination.name} to={`/plan-trip?destination=${encodeURIComponent(destination.name)}`} className="scrapbook-paper scrapbook-wiggle group overflow-hidden transition-transform duration-200 dark:bg-stone-900">
+        {destinations.map((destination) => (
+          <article key={destination.name} className="scrapbook-paper scrapbook-wiggle group overflow-hidden transition-transform duration-200 dark:bg-stone-900">
             <div className={`relative h-40 overflow-hidden ${destination.tone}`}>
               <div className={`absolute right-4 top-4 flex h-9 w-9 items-center justify-center border border-white/70 bg-white/60 ${destination.accent}`}><MapPin className="h-4 w-4" /></div>
               <div className="absolute inset-0"><DestinationPhoto destination={destination.name} src={destination.photo} /></div>
             </div>
             <div className="flex items-start justify-between gap-3 p-4">
-              <div><h3 className="font-serif text-xl font-bold text-slate-950 dark:text-white">{destination.name}</h3><p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{destination.detail}</p>{destination.photoCredit && <a href={destination.photoCredit.url} target="_blank" rel="noreferrer" className="mt-1 block text-[9px] leading-3 text-slate-500 underline">{destination.photoCredit.label}</a>}</div>
+              <div><h3 className="font-serif text-xl font-bold text-slate-950 dark:text-white">{destination.name}</h3><p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{destination.detail}</p>{destination.photoCredit && <a href={destination.photoCredit.url} target="_blank" rel="noopener noreferrer" className="mt-1 block text-[9px] leading-3 text-slate-500 underline">{destination.photoCredit.label}</a>}<Link to={`/plan-trip?destination=${encodeURIComponent(destination.name)}`} className="mt-3 inline-flex items-center gap-1 rounded-md border border-secondary-700 px-3 py-2 text-xs font-semibold text-secondary-800 transition-colors hover:bg-secondary-50 dark:border-secondary-400 dark:text-secondary-300 dark:hover:bg-slate-800">Plan this trip <ArrowRight className="h-3.5 w-3.5" /></Link></div>
               <ArrowUpRight className="mt-1 h-4 w-4 shrink-0 text-slate-400 transition-colors group-hover:text-teal-700 dark:group-hover:text-teal-300" />
             </div>
-          </Link>
+          </article>
         ))}
       </div>
     </section>
@@ -165,6 +189,7 @@ const Home = () => (
       </div>
     </section>
   </div>
-);
+  );
+};
 
 export default Home;

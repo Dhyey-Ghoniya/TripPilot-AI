@@ -44,6 +44,7 @@ const STARTER_ACTIONS = [
 
 const TripPilotChat = ({
   initialPrompt = '',
+  autoSendInitialPrompt = false,
   initialTripId = null,
   onTripGenerated = null,
   compact = false,
@@ -57,6 +58,7 @@ const TripPilotChat = ({
   const { addToast } = useToast();
   const chatContainerRef = useRef(null);
   const pendingResumeStarted = useRef(false);
+  const autoPromptStarted = useRef(false);
 
   const [promptInput, setPromptInput] = useState(initialPrompt);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -231,6 +233,19 @@ const TripPilotChat = ({
       setIsExecuting(false);
     }
   };
+
+  useEffect(() => {
+    if (!autoSendInitialPrompt || !initialPrompt.trim() || autoPromptStarted.current) return;
+    const promptKey = `trippilot:sent-destination-prompt:${initialPrompt.trim().toLowerCase()}`;
+    try {
+      if (window.sessionStorage.getItem(promptKey)) return;
+      window.sessionStorage.setItem(promptKey, '1');
+    } catch {
+      // The ref still prevents duplicate submissions during this mounted page session.
+    }
+    autoPromptStarted.current = true;
+    handleSendMessage(initialPrompt);
+  }, [autoSendInitialPrompt, initialPrompt, isExecuting]);
 
   return (
     <div className={`bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-xl shadow-soft border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white max-w-4xl mx-auto text-left space-y-4 ${className}`}>
@@ -522,7 +537,7 @@ const TripPilotChat = ({
                 <a
                   href={handoffModalItem.bookingUrl}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer sponsored"
                   onClick={() => setHandoffModalItem(null)}
                   className="w-full py-2.5 rounded-xl bg-secondary-600 hover:bg-secondary-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition"
                 >

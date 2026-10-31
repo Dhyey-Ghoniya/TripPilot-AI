@@ -17,6 +17,8 @@ import {
   Sparkles,
   Trash2,
   Share2,
+  MessageCircle,
+  Mail,
   Copy,
   Archive,
   CheckCircle2,
@@ -204,6 +206,17 @@ const MyTrips = () => {
       addToast('Trip planning invite copied.', 'success');
     } catch {
       addToast('Clipboard access is unavailable. Select and copy the invite link.', 'error');
+    }
+  };
+
+  const getInviteUrl = () => shareInviteCode ? `${window.location.origin}/join/${shareInviteCode}` : '';
+  const getInviteMessage = () => `Join my trip plan on TripPilot: ${getInviteUrl()}`;
+  const shareInviteNatively = async () => {
+    if (!getInviteUrl() || typeof navigator.share !== 'function') return;
+    try {
+      await navigator.share({ title: 'TripPilot trip invite', text: getInviteMessage(), url: getInviteUrl() });
+    } catch (error) {
+      if (error.name !== 'AbortError') addToast('Could not open the share menu.', 'error');
     }
   };
 
@@ -614,17 +627,22 @@ const MyTrips = () => {
           <div className="space-y-2 border-t border-slate-200 pt-4 dark:border-slate-700">
             <div>
               <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Plan together</p>
-              <p className="mt-1 text-[11px] text-slate-500">Anyone who joins this link can edit the itinerary and contribute to the trip discussion.</p>
+              <p className="mt-1 text-[11px] text-slate-500">Anyone with this invite link can edit the itinerary and contribute to the trip discussion.</p>
             </div>
             <div className="flex gap-2">
               <input
                 type="text"
                 readOnly
-                value={shareInviteCode ? `${window.location.origin}/join/${shareInviteCode}` : ''}
+                value={getInviteUrl()}
                 placeholder="Invite link is being prepared"
                 className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
               />
               <Button variant="primary" size="sm" icon={Copy} disabled={!shareInviteCode} onClick={copyInviteLink}>Copy invite</Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <a href={`https://wa.me/?text=${encodeURIComponent(getInviteMessage())}`} target="_blank" rel="noopener noreferrer" aria-disabled={!shareInviteCode} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${shareInviteCode ? 'border-emerald-700 text-emerald-800 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/40' : 'pointer-events-none border-slate-200 text-slate-400'}`}><MessageCircle className="h-4 w-4" /> WhatsApp</a>
+              <a href={`mailto:?subject=${encodeURIComponent('TripPilot trip invitation')}&body=${encodeURIComponent(getInviteMessage())}`} aria-disabled={!shareInviteCode} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${shareInviteCode ? 'border-slate-300 text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800' : 'pointer-events-none border-slate-200 text-slate-400'}`}><Mail className="h-4 w-4" /> Email</a>
+              {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && <Button variant="outline" size="sm" icon={Share2} disabled={!shareInviteCode} onClick={shareInviteNatively}>Share</Button>}
             </div>
             <button type="button" onClick={rotateInviteLink} className="text-xs font-semibold text-secondary-700 hover:underline dark:text-secondary-300">Create a new invite link</button>
           </div>

@@ -37,7 +37,7 @@ export default function FlightHandoffCard({ searchParams = {}, handoffLinks = []
       {handoffLinks.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {handoffLinks.map((provider) => (
-            <a key={provider.providerName} href={provider.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 transition-colors duration-200 hover:border-secondary-500 hover:text-secondary-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:text-secondary-300">
+            <a key={provider.providerName} href={provider.url} target="_blank" rel="noopener noreferrer sponsored" className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 transition-colors duration-200 hover:border-secondary-500 hover:text-secondary-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:text-secondary-300">
               {provider.providerName}
               <ExternalLink className="h-4 w-4" aria-hidden="true" />
               <span className="ml-1 border-l border-current/20 pl-2 text-[11px] font-medium">{provider.prefilled ? 'Prefilled search' : 'Opens site'}</span>

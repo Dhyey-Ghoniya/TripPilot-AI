@@ -306,6 +306,8 @@ const BudgetView = ({ trip, itinerary }) => {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [costTypeFilter, setCostTypeFilter] = useState('all');
   const [expandedAlerts, setExpandedAlerts] = useState(true);
+  const [exchangeRates, setExchangeRates] = useState(null);
+  const [displayCurrency, setDisplayCurrency] = useState(null);
 
   // AI Copilot state
   const [aiCommand, setAiCommand] = useState('');
@@ -434,7 +436,38 @@ const BudgetView = ({ trip, itinerary }) => {
   };
 
   const data = dashboard || buildLocalDashboard(trip, itinerary);
-  const currency = data.currency || 'INR';
+  const currency = String(data.currency || 'INR').toUpperCase();
+  const activeCurrency = displayCurrency || currency;
+
+  useEffect(() => {
+    let active = true;
+    budgetService.getExchangeRates()
+      .then((response) => {
+        const ratesData = response?.data;
+        if (active && ratesData?.rates && ratesData?.date) setExchangeRates(ratesData);
+      })
+      .catch(() => { if (active) setExchangeRates(null); });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => { setDisplayCurrency(currency); }, [currency]);
+
+  const formatDisplayCurrency = (amount, sourceCurrency = currency) => {
+    const value = Number(amount) || 0;
+    const source = String(sourceCurrency || currency).toUpperCase();
+    if (activeCurrency !== source && exchangeRates?.rates?.[source] && exchangeRates?.rates?.[activeCurrency]) {
+      const converted = (value / exchangeRates.rates[source]) * exchangeRates.rates[activeCurrency];
+      try {
+        return new Intl.NumberFormat('en-IN', { style: 'currency', currency: activeCurrency, maximumFractionDigits: 0 }).format(converted);
+      } catch { return `${activeCurrency} ${Math.round(converted).toLocaleString('en-IN')}`; }
+    }
+    return formatCurrency(value, source);
+  };
+
+  const availableCurrencies = exchangeRates
+    ? Object.keys(exchangeRates.rates).filter((code) => ['INR', 'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'SGD', 'CHF'].includes(code)).sort()
+    : [];
+  const hasConvertedAmounts = activeCurrency !== currency || expenses.some((expense) => expense.currency && expense.currency !== activeCurrency);
 
   // Donut segments
   const donutSegments = useMemo(() => {
@@ -486,6 +519,18 @@ const BudgetView = ({ trip, itinerary }) => {
         ))}
       </div>
 
+      {exchangeRates?.rates?.[currency] && availableCurrencies.length > 1 && (
+        <div className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-3 text-sm dark:border-slate-700 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
+          <label className="flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-200">
+            Display currency
+            <select value={activeCurrency} onChange={(event) => setDisplayCurrency(event.target.value)} className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800">
+              {availableCurrencies.map((code) => <option key={code} value={code}>{code}</option>)}
+            </select>
+          </label>
+          {hasConvertedAmounts && <p className="text-xs text-slate-500 dark:text-slate-400">Converted amounts are approximate, based on reference rates dated {exchangeRates.date}.</p>}
+        </div>
+      )}
+
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* DASHBOARD SECTION                                             */}
       {/* ═══════════════════════════════════════════════════════════════ */}
@@ -499,7 +544,7 @@ const BudgetView = ({ trip, itinerary }) => {
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
                 <Target className="w-3 h-3" /> Total Budget
               </span>
-              <h3 className="text-2xl font-black text-slate-900 dark:text-white">{formatCurrency(data.totalBudget, currency)}</h3>
+              <h3 className="text-2xl font-black text-slate-900 dark:text-white">{formatDisplayCurrency(data.totalBudget)}</h3>
               <span className="text-[10px] text-slate-400">{data.durationDays} days · {trip?.travelers?.count || 1} travelers</span>
             </Card>
 
@@ -509,7 +554,7 @@ const BudgetView = ({ trip, itinerary }) => {
               <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500 flex items-center gap-1">
                 <TrendingUp className="w-3 h-3" /> Estimated
               </span>
-              <h3 className="text-2xl font-black text-amber-600 dark:text-amber-400">{formatCurrency(data.summary.totalEstimated, currency)}</h3>
+              <h3 className="text-2xl font-black text-amber-600 dark:text-amber-400">{formatDisplayCurrency(data.summary.totalEstimated)}</h3>
               <span className="text-[10px] text-slate-400">AI-projected costs</span>
             </Card>
 
@@ -519,7 +564,7 @@ const BudgetView = ({ trip, itinerary }) => {
               <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-500 flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3" /> Spent
               </span>
-              <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(data.summary.totalSpent, currency)}</h3>
+              <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{formatDisplayCurrency(data.summary.totalSpent)}</h3>
               <span className="text-[10px] text-slate-400">Confirmed + Actual</span>
             </Card>
 
@@ -542,11 +587,11 @@ const BudgetView = ({ trip, itinerary }) => {
                 data.summary.isOverBudget ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-white'
               }`}>
                 {data.summary.isOverBudget
-                  ? `-${formatCurrency(data.summary.overBudgetAmount, currency)}`
-                  : formatCurrency(data.summary.remainingBudget, currency)}
+                  ? `-${formatDisplayCurrency(data.summary.overBudgetAmount)}`
+                  : formatDisplayCurrency(data.summary.remainingBudget)}
               </h3>
               <span className="text-[10px] text-slate-400">
-                {formatCurrency(data.summary.averageDailyCost, currency)} / day avg
+                {formatDisplayCurrency(data.summary.averageDailyCost)} / day avg
               </span>
             </Card>
           </div>
@@ -595,10 +640,10 @@ const BudgetView = ({ trip, itinerary }) => {
                           {cat === 'Flights' && <span className="text-[10px] text-slate-500 dark:text-slate-400">Estimated flight allowance for budgeting, not a fare</span>}
                         </div>
                         <div className="flex items-center gap-3 text-[10px]">
-                          {est > 0 && <span className="text-amber-500 font-semibold">Est: {formatCurrency(est, currency)}</span>}
-                          {conf > 0 && <span className="text-blue-500 font-semibold">Conf: {formatCurrency(conf, currency)}</span>}
-                          {act > 0 && <span className="text-emerald-500 font-semibold">Act: {formatCurrency(act, currency)}</span>}
-                          <span className="font-black text-slate-900 dark:text-white text-xs">{formatCurrency(catTotal, currency)}</span>
+                          {est > 0 && <span className="text-amber-500 font-semibold">Est: {formatDisplayCurrency(est)}</span>}
+                          {conf > 0 && <span className="text-blue-500 font-semibold">Conf: {formatDisplayCurrency(conf)}</span>}
+                          {act > 0 && <span className="text-emerald-500 font-semibold">Act: {formatDisplayCurrency(act)}</span>}
+                          <span className="font-black text-slate-900 dark:text-white text-xs">{formatDisplayCurrency(catTotal)}</span>
                         </div>
                       </div>
                       <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
@@ -665,7 +710,7 @@ const BudgetView = ({ trip, itinerary }) => {
                         </div>
                         <span className={`text-xs font-bold ${
                           pct > 120 ? 'text-red-500' : pct > 80 ? 'text-amber-500' : 'text-emerald-500'
-                        }`}>{formatCurrency(day.estimatedCost, currency)}</span>
+                        }`}>{formatDisplayCurrency(day.estimatedCost)}</span>
                       </div>
                       <div className="h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
                         <div
@@ -780,7 +825,7 @@ const BudgetView = ({ trip, itinerary }) => {
                       </div>
 
                       <div className="flex items-center gap-3 flex-shrink-0">
-                        <span className="text-sm font-black text-slate-900 dark:text-white">{formatCurrency(exp.amount, exp.currency)}</span>
+                        <span className="text-sm font-black text-slate-900 dark:text-white">{formatDisplayCurrency(exp.amount, exp.currency)}</span>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
                           <button
                             onClick={() => { setEditingExpense(exp); setShowAddExpense(true); }}
@@ -881,7 +926,7 @@ const BudgetView = ({ trip, itinerary }) => {
                         <div>
                           <span className="font-bold text-emerald-700 dark:text-emerald-300 block">{saving.suggestion}</span>
                           <span className="text-emerald-600/70 dark:text-emerald-400/70">
-                            Save {formatCurrency(saving.suggestedSavings || saving.savings, currency)} on {saving.item || saving.activity}
+                            Save {formatDisplayCurrency(saving.suggestedSavings || saving.savings)} on {saving.item || saving.activity}
                           </span>
                         </div>
                       </div>
@@ -897,9 +942,9 @@ const BudgetView = ({ trip, itinerary }) => {
                       <div key={i} className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-xs">
                         <div className="flex items-center justify-between mb-1">
                           <span className="font-bold text-blue-700 dark:text-blue-300">Day {alt.dayNumber}: {alt.currentActivity}</span>
-                          <Badge variant="accent" size="xs">-{formatCurrency(alt.potentialSavings, currency)}</Badge>
+                          <Badge variant="accent" size="xs">-{formatDisplayCurrency(alt.potentialSavings)}</Badge>
                         </div>
-                        <span className="text-blue-600/70 dark:text-blue-400/70">→ {alt.suggestedAlternative} ({formatCurrency(alt.alternativeCost, currency)})</span>
+                        <span className="text-blue-600/70 dark:text-blue-400/70">→ {alt.suggestedAlternative} ({formatDisplayCurrency(alt.alternativeCost)})</span>
                       </div>
                     ))}
                   </div>
@@ -918,7 +963,7 @@ const BudgetView = ({ trip, itinerary }) => {
                           </span>
                           {rec.description && <span className="text-secondary-700/80 dark:text-secondary-300/80">{rec.description}</span>}
                           {rec.potentialSavings > 0 && (
-                            <span className="block font-bold text-emerald-500 mt-0.5">Potential savings: {formatCurrency(rec.potentialSavings, currency)}</span>
+                            <span className="block font-bold text-emerald-500 mt-0.5">Potential savings: {formatDisplayCurrency(rec.potentialSavings)}</span>
                           )}
                         </div>
                       </div>
@@ -940,8 +985,8 @@ const BudgetView = ({ trip, itinerary }) => {
                           <span className="text-[10px] text-slate-400">{item.status}</span>
                         </div>
                         <div className="text-right">
-                          <span className="font-bold text-slate-900 dark:text-white block">{formatCurrency(item.spent, currency)}</span>
-                          <span className="text-[10px] text-slate-400">of {formatCurrency(item.allocated, currency)}</span>
+                          <span className="font-bold text-slate-900 dark:text-white block">{formatDisplayCurrency(item.spent)}</span>
+                          <span className="text-[10px] text-slate-400">of {formatDisplayCurrency(item.allocated)}</span>
                         </div>
                       </div>
                     ))}
@@ -960,7 +1005,7 @@ const BudgetView = ({ trip, itinerary }) => {
                         </div>
                         <span className="text-amber-600/70 dark:text-amber-400/70 block">{sug.description}</span>
                         <span className="text-amber-600 dark:text-amber-400 font-bold">
-                          {formatCurrency(sug.estimatedCostPerNight, currency)}/night · {formatCurrency(sug.totalEstimated, currency)} total
+                          {formatDisplayCurrency(sug.estimatedCostPerNight)}/night · {formatDisplayCurrency(sug.totalEstimated)} total
                         </span>
                       </div>
                     ))}
@@ -971,7 +1016,7 @@ const BudgetView = ({ trip, itinerary }) => {
                 {aiResult.data?.totalPotentialSavings > 0 && (
                   <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-center">
                     <span className="text-xs font-semibold opacity-90 block">Total Potential Savings</span>
-                    <span className="text-2xl font-black">{formatCurrency(aiResult.data.totalPotentialSavings, currency)}</span>
+                    <span className="text-2xl font-black">{formatDisplayCurrency(aiResult.data.totalPotentialSavings)}</span>
                   </div>
                 )}
               </div>

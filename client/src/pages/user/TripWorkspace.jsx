@@ -638,7 +638,7 @@ const TripWorkspace = () => {
       {/* TAB 7: AI ASSISTANT */}
       {activeTab === 'ai_assistant' && (
         <div className="max-w-2xl mx-auto">
-          <AiTripAssistant tripId={trip._id} onExecuteCommand={handleExecuteAiCommand} />
+          <AiTripAssistant tripId={trip._id} destination={destName} onExecuteCommand={handleExecuteAiCommand} />
         </div>
       )}
 

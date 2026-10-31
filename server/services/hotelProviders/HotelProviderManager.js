@@ -1,4 +1,7 @@
 const openStreetMapProvider = require('./OpenStreetMapProvider');
+const { applyAffiliateTracking } = require('../affiliateLinks.service');
+
+// TODO: Confirm Agoda's `cid` URL parameter in its affiliate dashboard before attaching Agoda tracking IDs.
 
 class HotelProviderManager {
   constructor() {
@@ -21,7 +24,7 @@ class HotelProviderManager {
           providerName: provider.name,
           providerCode: provider.code,
           providerLogo: provider.logoUrl,
-          bookingUrl: hotel.bookingUrl || null,
+          bookingUrl: applyAffiliateTracking(hotel.bookingUrl || null, 'booking'),
           isIndicativeSuggestion: false,
           inventoryVerified: false,
           dataQuality: hotel.dataQuality || 'directory_listing',

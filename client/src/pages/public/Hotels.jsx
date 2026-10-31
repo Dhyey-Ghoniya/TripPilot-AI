@@ -13,6 +13,7 @@ const Hotels = () => {
   const [loading, setLoading] = useState(false);
   const [hotels, setHotels] = useState([]);
   const [searchError, setSearchError] = useState('');
+  const [affiliateDisclosure, setAffiliateDisclosure] = useState(false);
 
   const handleSearch = async () => {
     if (!destination.trim()) return;
@@ -24,9 +25,11 @@ const Hotels = () => {
         accommodationType: propertyType === 'all' ? null : propertyType,
       });
       setHotels(response?.data?.results || []);
+      setAffiliateDisclosure(Boolean(response?.data?.affiliateDisclosure));
     } catch (error) {
       console.error('Hotel directory search error:', error);
       setHotels([]);
+      setAffiliateDisclosure(false);
       setSearchError(error.response?.data?.message || 'Could not load hotel listings. Please try again.');
     } finally {
       setLoading(false);
@@ -83,6 +86,7 @@ const Hotels = () => {
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
             Listings are attributed to <a className="underline" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a>. Photos link to their source and license.
           </p>
+          {affiliateDisclosure && <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Some links may earn TripPilot a commission at no extra cost to you.</p>}
         </div>
 
         {loading ? (
@@ -140,7 +144,7 @@ const Hotels = () => {
 
                   <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
                     {hotel.bookingUrl && (
-                      <a href={hotel.bookingUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-800 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800">
+                      <a href={hotel.bookingUrl} target="_blank" rel="noopener noreferrer sponsored" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-800 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800">
                         <ExternalLink className="h-3.5 w-3.5" /> Compare current rates
                       </a>
                     )}

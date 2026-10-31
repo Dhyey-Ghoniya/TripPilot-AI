@@ -22,6 +22,7 @@ import {
 import Card from '../common/Card';
 import FlightHandoffCard from '../common/FlightHandoffCard';
 import Button from '../ui/Button';
+import affiliateLinksService from '../../services/affiliateLinksService';
 
 const COMMAND_PRESETS = [
   'Make it cheaper',
@@ -35,7 +36,7 @@ const COMMAND_PRESETS = [
   'Packing list',
 ];
 
-const AiTripAssistant = ({ tripId, onExecuteCommand }) => {
+const AiTripAssistant = ({ tripId, destination, onExecuteCommand }) => {
   const [promptInput, setPromptInput] = useState('');
   const [isExecuting, setIsExecuting] = useState(false);
   const [handoffModalItem, setHandoffModalItem] = useState(null);
@@ -349,9 +350,9 @@ const AiTripAssistant = ({ tripId, onExecuteCommand }) => {
             </div>
             <div className="space-y-2">
               <a
-                href="https://www.booking.com"
+                href={affiliateLinksService.getHotelRedirectUrl(destination || 'your destination')}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer sponsored"
                 onClick={() => setHandoffModalItem(null)}
                 className="w-full py-2.5 rounded-xl bg-secondary-600 hover:bg-secondary-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition"
               >

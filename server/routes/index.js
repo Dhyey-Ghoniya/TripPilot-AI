@@ -22,6 +22,7 @@ const activitiesRoutes = require('./activities.routes');
 const mapRoutes = require('./map.routes');
 const journalRoutes = require('./journal.routes');
 const imagesRoutes = require('./images.routes');
+const affiliateRoutes = require('./affiliate.routes');
 
 router.use('/health', healthRoutes);
 router.use('/auth', authRoutes);
@@ -34,6 +35,7 @@ router.use('/itineraries', itinerariesRoutes);
 router.use('/recommendations', exploreRoutes);
 router.use('/explore', exploreRoutes);
 router.use('/budget', budgetRoutes);
+router.use('/affiliates', affiliateRoutes);
 router.use('/weather', weatherRoutes);
 router.use('/admin', adminRoutes);
 router.use('/ai', aiRoutes);

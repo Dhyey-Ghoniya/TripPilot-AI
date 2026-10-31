@@ -1,6 +1,7 @@
 import api from './api';
 
 const budgetService = {
+  getExchangeRates: async () => await api.get('/budget/rates'),
   /**
    * Get full budget dashboard for a trip
    */
