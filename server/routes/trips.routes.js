@@ -10,12 +10,16 @@ router.get('/share/:shareCode', tripController.getSharedTrip);
 // Protected routes (require user login)
 router.use(authenticate);
 
+// Keep the join route before parameterized trip routes.
+router.post('/join/:inviteCode', tripController.joinTrip);
+
 router.get('/', tripController.getMyTrips);
 router.post('/', tripController.createTrip);
 router.get('/analytics/completed', tripController.getCompletedTripsAnalytics);
 
 router.get('/:id', tripController.getTripById);
 router.put('/:id/sharing', tripController.setSharing);
+router.post('/:id/invite', tripController.getInvite);
 router.get('/:id/collaborators', tripController.getCollaborators);
 router.post('/:id/collaborators', tripController.addCollaborator);
 router.delete('/:id/collaborators/:userId', tripController.removeCollaborator);

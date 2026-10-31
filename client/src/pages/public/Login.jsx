@@ -38,6 +38,12 @@ const Login = () => {
       const result = await login(email, password);
       if (result.success) {
         showToast(`Welcome back, ${result.user.firstName}.`, 'success');
+
+        const pendingInvite = localStorage.getItem('trippilot_pending_invite');
+        if (pendingInvite) {
+          navigate(`/join/${encodeURIComponent(pendingInvite)}`, { replace: true });
+          return;
+        }
         
         const pending = getPendingTripSession();
         if (pending) {

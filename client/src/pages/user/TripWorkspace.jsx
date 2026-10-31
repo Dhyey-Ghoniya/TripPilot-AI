@@ -36,6 +36,7 @@ import Spinner from '../../components/ui/Spinner';
 
 import InteractiveTimeline from '../../components/workspace/InteractiveTimeline';
 import TripIntelligence from '../../components/workspace/TripIntelligence';
+import ToursAndTickets from '../../components/workspace/ToursAndTickets';
 import AiTripAssistant from '../../components/workspace/AiTripAssistant';
 import BudgetView from '../../components/workspace/BudgetView';
 import MapView from '../../components/workspace/MapView';
@@ -577,6 +578,7 @@ const TripWorkspace = () => {
           <div className="lg:col-span-5 space-y-6">
             <TripIntelligence trip={trip} itinerary={itinerary} telemetry={mapTelemetry} />
             <MapView trip={trip} itinerary={itinerary} selectedDay={selectedDay} activeMode={selectedTransportMode} onModeChange={setSelectedTransportMode} onTelemetryChange={setMapTelemetry} />
+            <ToursAndTickets destination={destName} />
           </div>
         </div>
       )}
@@ -609,7 +611,7 @@ const TripWorkspace = () => {
           <div className="grid gap-3">
             {flightResults.slice(0, 6).map((flight, index) => (
               <div key={flight.id || flight.flightNumber || index} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
-                <div><p className="font-bold text-slate-900 dark:text-white">{flight.airline || flight.provider || 'Flight option'}</p><p className="text-xs text-slate-500">{flight.departureTime || 'Schedule unavailable'} to {flight.arrivalTime || 'Schedule unavailable'} · {flight.stops ?? 'Unknown'} stops</p><p className="text-xs text-slate-500">{flight.isIndicativeSuggestion ? 'Indicative estimate' : 'Provider result'}</p></div>
+                <div><p className="font-bold text-slate-900 dark:text-white">{flight.airline || flight.provider || 'Flight option'}</p><p className="text-xs text-slate-500">{flight.departureTime || 'Schedule unavailable'} to {flight.arrivalTime || 'Schedule unavailable'} · {flight.stops ?? 'Unknown'} stops</p><p className="text-xs text-slate-500">{flight.isIndicativeSuggestion || flight.isIndicativeEstimate || flight.dataQuality === 'sample_estimate' ? 'Indicative estimate, not a live fare' : 'Provider result'}</p></div>
                 <div className="flex items-center gap-3"><span className="font-bold text-slate-900 dark:text-white">{flight.price?.amount ? `${flight.price.currency || 'INR'} ${flight.price.amount.toLocaleString()}` : 'Price unavailable'}</span><Button size="sm" variant="outline" onClick={async () => { try { await flightService.attachFlightToTrip(trip._id, flight); await loadTripData(); addToast('Flight option attached to this trip.', 'success'); } catch (error) { addToast('Flight could not be attached.', 'error'); } }}>Attach</Button></div>
               </div>
             ))}

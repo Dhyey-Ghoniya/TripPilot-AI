@@ -79,6 +79,12 @@ const Register = () => {
       if (result.success) {
         showToast('Account created. Welcome to TripPilot.', 'success');
 
+        const pendingInvite = localStorage.getItem('trippilot_pending_invite');
+        if (pendingInvite) {
+          navigate(`/join/${encodeURIComponent(pendingInvite)}`, { replace: true });
+          return;
+        }
+
         const pending = getPendingTripSession();
         if (pending) {
           if (pending.chatLog?.length > 0 || pending.lastPrompt) {

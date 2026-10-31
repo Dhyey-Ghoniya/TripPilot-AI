@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const itineraryController = require('../controllers/itinerary.controller');
-const { authenticate } = require('../middleware/auth.middleware');
+const { authenticate, optionalAuth } = require('../middleware/auth.middleware');
 const requireTripEditor = require('../middleware/requireTripEditor');
+const requireTripViewer = require('../middleware/requireTripViewer');
 
-// Public shared itinerary lookup or protected
-router.get('/:tripId', itineraryController.getItineraryByTrip);
+// Public trips may be viewed anonymously; private trips require an authorized viewer.
+router.get('/:tripId', optionalAuth, requireTripViewer, itineraryController.getItineraryByTrip);
 
 // Protected editing routes
 router.post('/:id/activities', authenticate, requireTripEditor, itineraryController.addActivity);

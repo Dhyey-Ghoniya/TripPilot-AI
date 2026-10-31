@@ -24,8 +24,10 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'u
   const login = read('client/src/pages/public/Login.jsx');
   const register = read('client/src/pages/public/Register.jsx');
   assert.match(planner, /savePendingTripSession/);
-  assert.match(login, /clearPendingTripSession/);
-  assert.match(register, /clearPendingTripSession/);
+  assert.match(login, /getPendingTripSession/);
+  assert.match(login, /navigate\('\/plan-trip'/);
+  assert.match(register, /getPendingTripSession/);
+  assert.match(register, /navigate\('\/plan-trip'/);
 
   const mapClient = read('client/src/components/workspace/MapView.jsx');
   const mapServer = read('server/services/map.service.js');

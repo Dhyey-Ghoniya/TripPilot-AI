@@ -30,6 +30,8 @@ const tripService = {
   },
 
   setSharing: async (id, isPublic) => api.put(`/trips/${id}/sharing`, { isPublic }),
+  getInvite: async (id, rotate = false) => api.post(`/trips/${id}/invite`, { rotate }),
+  joinTrip: async (code) => api.post(`/trips/join/${encodeURIComponent(code)}`),
   getCollaborators: async (id) => api.get(`/trips/${id}/collaborators`),
   addCollaborator: async (id, email, role = 'editor') => api.post(`/trips/${id}/collaborators`, { email, role }),
   removeCollaborator: async (id, userId) => api.delete(`/trips/${id}/collaborators/${userId}`),

@@ -2,6 +2,7 @@ const AiSession = require('../models/AiSession');
 const travelOrchestrator = require('./travelOrchestrator.service');
 const aiExtractor = require('./aiExtractor.service');
 const llmChat = require('./llmChat.service');
+const planningBrief = require('./planningBrief.service');
 
 class AiSessionService {
   /**
@@ -71,7 +72,7 @@ class AiSessionService {
     };
 
     // Extract parameters & intent using Module 2 context awareness
-    const extraction = aiExtractor.extractParameters(
+    let extraction = aiExtractor.extractParameters(
       messageText,
       accumulatedParams,
       session.lastAskedField
@@ -211,6 +212,24 @@ class AiSessionService {
       await session.save();
 
       return { session, orchestratorResult };
+    }
+
+    if (
+      llmChat.enabled && !existingTrip && !extraction.isReadyToPlan &&
+      !['GREETING', 'START_OVER'].includes(extraction.intent)
+    ) {
+      try {
+        const planningTurn = await llmChat.interpretPlanningTurn({
+          message: messageText,
+          knownParams: accumulatedParams,
+          recentMessages: session.messages,
+        });
+        if (planningTurn && ['PLAN', 'ANSWER_FOLLOW_UP'].includes(planningTurn.intent)) {
+          extraction = planningBrief.mergeAndRecompute(extraction, planningTurn);
+        }
+      } catch (error) {
+        console.warn('[AI session] Planning interpretation failed; keeping rule-based extraction:', error.message);
+      }
     }
 
     // ─────────────────────────────────────────────────────────────────

@@ -299,6 +299,7 @@ const TripSchema = new mongoose.Schema(
     shareSettings: {
       isPublic: { type: Boolean, default: false },
       shareCode: { type: String, default: () => Math.random().toString(36).substring(2, 10).toUpperCase() },
+      inviteCode: { type: String, default: null, index: true },
       allowComments: { type: Boolean, default: true },
     },
     collaborators: [{

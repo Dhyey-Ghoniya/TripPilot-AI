@@ -27,6 +27,7 @@ import PrivacyPolicy from '../pages/public/PrivacyPolicy';
 import TermsAndConditions from '../pages/public/TermsAndConditions';
 import NotFound from '../pages/public/NotFound';
 import SharedTrip from '../pages/public/SharedTrip';
+import JoinTrip from '../pages/public/JoinTrip';
 
 // User / Planner Pages
 import UserDashboard from '../pages/user/UserDashboard';
@@ -72,6 +73,7 @@ const AppRoutes = () => {
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<TermsAndConditions />} />
         <Route path="/share/trip/:shareCode" element={<SharedTrip />} />
+        <Route path="/join/:inviteCode" element={<JoinTrip />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="*" element={<NotFound />} />

@@ -91,6 +91,20 @@ class TripController {
     } catch (error) { next(error); }
   }
 
+  async getInvite(req, res, next) {
+    try {
+      const result = await tripService.getTripInvite(req.params.id, req.user._id, Boolean(req.body.rotate));
+      return ApiResponse.success(res, result, 'Trip invite link ready');
+    } catch (error) { next(error); }
+  }
+
+  async joinTrip(req, res, next) {
+    try {
+      const result = await tripService.joinTripByInvite(req.params.inviteCode, req.user._id);
+      return ApiResponse.success(res, result, 'You joined the trip as a collaborator');
+    } catch (error) { next(error); }
+  }
+
   async getCollaborators(req, res, next) {
     try {
       const collaborators = await tripService.getCollaborators(req.params.id, req.user._id);

@@ -1,4 +1,5 @@
 const Trip = require('../models/Trip');
+const crypto = require('crypto');
 const Itinerary = require('../models/Itinerary');
 const Expense = require('../models/Expense');
 const User = require('../models/User');
@@ -223,6 +224,35 @@ class TripService {
     trip.shareSettings.isPublic = Boolean(isPublic);
     await trip.save();
     return trip;
+  }
+
+  async getTripInvite(tripId, ownerId, rotate = false) {
+    const trip = await Trip.findById(tripId);
+    if (!trip) throw Object.assign(new Error('Trip not found.'), { statusCode: 404 });
+    if (!isTripOwner(trip, ownerId)) throw Object.assign(new Error('Only the trip owner can manage invite links.'), { statusCode: 403 });
+    if (!trip.shareSettings) trip.shareSettings = {};
+    if (!trip.shareSettings.inviteCode || rotate) {
+      trip.shareSettings.inviteCode = crypto.randomBytes(12).toString('hex');
+      await trip.save();
+    }
+    return { inviteCode: trip.shareSettings.inviteCode };
+  }
+
+  async joinTripByInvite(inviteCode, userId) {
+    const trip = await Trip.findOne({ 'shareSettings.inviteCode': inviteCode });
+    if (!trip) throw Object.assign(new Error('This trip invite is invalid or has expired.'), { statusCode: 404 });
+
+    if (isTripOwner(trip, userId)) {
+      return { tripId: trip._id, title: trip.title, role: 'owner' };
+    }
+    const existingMember = trip.collaborators.find((member) => String(member.userId) === String(userId));
+    if (existingMember) {
+      return { tripId: trip._id, title: trip.title, role: existingMember.role };
+    }
+
+    trip.collaborators.push({ userId, role: 'editor' });
+    await trip.save();
+    return { tripId: trip._id, title: trip.title, role: 'editor' };
   }
 
   async addCollaborator(tripId, ownerId, email, role = 'editor') {

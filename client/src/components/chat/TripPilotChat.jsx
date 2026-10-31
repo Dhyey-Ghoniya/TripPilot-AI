@@ -378,6 +378,9 @@ const TripPilotChat = ({
                           <span className="text-[9px] text-slate-400 block">
                             {fl.departureAirport} → {fl.arrivalAirport} ({fl.cabinClass || 'Economy'})
                           </span>
+                          <span className="text-[9px] text-amber-700 dark:text-amber-300 block">
+                            Indicative estimate, not a live fare
+                          </span>
                         </div>
                         <div className="text-right">
                           <span className="font-bold text-emerald-600 dark:text-emerald-400 block">
