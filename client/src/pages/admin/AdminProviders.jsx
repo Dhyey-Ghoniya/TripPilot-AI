@@ -111,7 +111,7 @@ const AdminProviders = () => {
             </div>
             <h1 className="text-3xl font-black">External Provider Status</h1>
             <p className="text-slate-400 text-xs sm:text-sm max-w-2xl">
-              Real-time operational status for flight matrix, hospitality search adapters, OpenStreetMap GIS, and Open-Meteo weather APIs.
+              Provider handoff status for flights and runtime status for connected hotel, map, and weather services.
             </p>
           </div>
           <Button

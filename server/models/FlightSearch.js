@@ -13,8 +13,8 @@ const FlightSearchSchema = new mongoose.Schema(
       index: true,
     },
     searchParams: {
-      originAirport: { type: String, required: true, uppercase: true, trim: true },
-      destinationAirport: { type: String, required: true, uppercase: true, trim: true },
+      originAirport: { type: String, required: true, trim: true },
+      destinationAirport: { type: String, required: true, trim: true },
       departureDate: { type: Date, required: true },
       returnDate: { type: Date },
       isRoundTrip: { type: Boolean, default: true },
@@ -53,6 +53,11 @@ const FlightSearchSchema = new mongoose.Schema(
         score: { type: Number, default: 90 }, // AI flight score based on price/duration ratio
       },
     ],
+    handoffLinks: [{
+      providerName: { type: String, required: true },
+      url: { type: String, required: true },
+      prefilled: { type: Boolean, default: false },
+    }],
     selectedFlightId: { type: String },
     status: {
       type: String,

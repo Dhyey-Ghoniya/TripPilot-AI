@@ -25,14 +25,14 @@ class AiToolsService {
 
   /**
    * Tool 2: searchFlights
-   * Fetches flight options across multi-provider adapters.
+   * Returns outbound flight-search links. The app does not have live flight inventory.
    */
   async searchFlights(searchParams = {}, userId = null) {
     const results = await flightService.searchFlights(searchParams, userId);
     return {
       success: true,
       tool: 'searchFlights',
-      source: 'PROVIDER',
+      source: 'PARTNER_HANDOFF',
       data: results,
     };
   }
@@ -249,7 +249,7 @@ class AiToolsService {
       // DAY 1: OUTBOUND JOURNEY INTEGRATION
       if (d === 1 && isDifferentCity) {
         timeSlots.push({
-          time: '08:00 AM',
+          time: 'Time to confirm with flight provider',
           timeSlot: 'morning',
           activity: `Outbound Journey: Departure from ${originName} to ${destName}`,
           location: `${originName} Airport / Station`,
@@ -258,7 +258,7 @@ class AiToolsService {
           estimatedCost: isDomestic ? 4500 : 18000,
           transportModeToNext: 'Flight / Express Train',
           transportDurationMinutes: 135,
-          notes: `Check-in at ${originName}, transit to ${destName}, transfer to hotel & luggage drop`,
+          notes: `Estimated flight allowance for budgeting, not a fare. Confirm schedule and airport transfer with the provider.`,
         });
         timeSlots.push({
           time: '01:30 PM',
@@ -337,7 +337,7 @@ class AiToolsService {
           notes: `Security check-in and boarding for return journey`,
         });
         timeSlots.push({
-          time: '07:30 PM',
+          time: 'Time to confirm with flight provider',
           timeSlot: 'night',
           activity: `Return Journey: Flight / Train Arrival back in ${originName}`,
           location: `${originName}`,
@@ -346,7 +346,7 @@ class AiToolsService {
           estimatedCost: isDomestic ? 4500 : 18000,
           transportModeToNext: 'Taxi',
           transportDurationMinutes: 30,
-          notes: `Safe return to ${originName}. Trip complete!`,
+          notes: `Estimated flight allowance for budgeting, not a fare. Confirm return schedule with the provider.`,
         });
       }
       // STANDARD FULL SIGHTSEEING DAY (No duplicates)

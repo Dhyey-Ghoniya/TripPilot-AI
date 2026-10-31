@@ -1,36 +1,33 @@
 const FlightSearch = require('../models/FlightSearch');
 const Trip = require('../models/Trip');
-const flightProviderManager = require('./flightProviders/FlightProviderManager');
+const { buildFlightHandoff } = require('./flightHandoff.service');
 
 class FlightService {
   /**
-   * Search flights across all 6 provider adapters (Ixigo, MMT, Cleartrip, Skyscanner, Trip.com, Expedia).
+   * Build ordinary outbound flight-search links. No live inventory provider is connected.
    */
   async searchFlights(searchParams = {}, userId = null) {
-    const origin = (searchParams.originAirport || searchParams.origin || 'AMD').toUpperCase();
-    const destination = (searchParams.destinationAirport || searchParams.destination || 'DXB').toUpperCase();
-    const departureDate = searchParams.departureDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
+    const handoff = buildFlightHandoff(searchParams);
+    const { origin, destination, departureDate, returnDate, travelersCount, cabinClass } = handoff.searchParams;
     const formattedParams = {
       originAirport: origin,
       destinationAirport: destination,
       departureDate,
-      returnDate: searchParams.returnDate || null,
-      isRoundTrip: Boolean(searchParams.returnDate),
-      cabinClass: searchParams.cabinClass || 'economy',
+      returnDate,
+      isRoundTrip: Boolean(returnDate),
+      passengers: { adults: travelersCount, children: 0, infants: 0 },
+      cabinClass,
     };
-
-    // Execute provider search across all adapters
-    const flightResults = await flightProviderManager.searchAllProviders(formattedParams);
 
     // Save search history in MongoDB
     let searchId = null;
-    if (FlightSearch.db.readyState === 1) {
+    if (FlightSearch.db.readyState === 1 && origin && destination && departureDate) {
       try {
         const flightSearchDoc = new FlightSearch({
           userId: userId || null,
           searchParams: formattedParams,
-          results: flightResults,
+          results: [],
+          handoffLinks: handoff.handoffLinks,
         });
         await flightSearchDoc.save();
         searchId = flightSearchDoc._id;
@@ -41,9 +38,8 @@ class FlightService {
 
     return {
       searchId,
-      searchParams: formattedParams,
-      totalResults: flightResults.length,
-      results: flightResults,
+      searchParams: handoff.searchParams,
+      handoffLinks: handoff.handoffLinks,
     };
   }
 
@@ -51,6 +47,13 @@ class FlightService {
    * Attach selected flight to active Trip & update trip budget
    */
   async attachFlightToTrip(tripId, flightData, userId) {
+    const verifiedPrice = Number(flightData?.price?.amount ?? flightData?.price);
+    if (!flightData?.isLive || !flightData.airline || !flightData.flightNumber || !flightData.departureTime || !flightData.arrivalTime || !Number.isFinite(verifiedPrice) || verifiedPrice <= 0) {
+      const err = new Error('Only a verified live flight result can be attached. Search and book with a provider, then add verified flight details when live inventory is connected.');
+      err.statusCode = 400;
+      throw err;
+    }
+
     const trip = await Trip.findById(tripId);
     if (!trip) {
       const err = new Error('Trip not found');
@@ -58,19 +61,20 @@ class FlightService {
       throw err;
     }
 
-    const flightPrice = Number(flightData.price?.amount || flightData.price || 0);
+    const flightPrice = verifiedPrice;
 
     // Construct standardized flight object
     const newFlightItem = {
       direction: flightData.direction || 'outbound',
-      airline: flightData.airline || 'Air Partner',
-      flightNumber: flightData.flightNumber || 'FL-101',
+      airline: flightData.airline,
+      flightNumber: flightData.flightNumber,
       departureAirport: flightData.departureAirport || trip.origin?.city || 'AMD',
       arrivalAirport: flightData.arrivalAirport || trip.destinations?.[0]?.name || 'DXB',
-      departureTime: flightData.departureTime || new Date(),
-      arrivalTime: flightData.arrivalTime || new Date(),
+      departureTime: flightData.departureTime,
+      arrivalTime: flightData.arrivalTime,
       price: flightPrice,
       cabinClass: flightData.cabinClass || 'Economy',
+      isLive: true,
       status: 'shortlisted',
       bookingUrl: flightData.bookingUrl || '',
     };
@@ -100,33 +104,38 @@ class FlightService {
   async executeAiFlightCommand(promptText, tripId = null, userId = null) {
     const prompt = (promptText || '').toLowerCase();
 
-    // 1. "Find flights from X to Y"
+    // Search commands return provider links, never synthetic options or prices.
     if (prompt.includes('find flights') || prompt.includes('search flights') || prompt.includes('flight from')) {
       const originMatch = prompt.match(/from\s+([A-Za-z\s]+?)(?=\s+to|\.|$)/i);
       const destMatch = prompt.match(/to\s+([A-Za-z\s]+?)(?=\s+from|\.|$)/i);
 
-      const origin = originMatch ? originMatch[1].trim() : 'AMD';
-      const destination = destMatch ? destMatch[1].trim() : 'DXB';
+      const origin = originMatch ? originMatch[1].trim() : '';
+      const destination = destMatch ? destMatch[1].trim() : '';
+
+      if (!origin || !destination) {
+        return {
+          action: 'need_details',
+          message: 'Provide both your origin and destination, then use Flight Search to enter dates, travelers, and cabin class.',
+          handoffLinks: [],
+        };
+      }
 
       const searchRes = await this.searchFlights({ originAirport: origin, destinationAirport: destination }, userId);
 
       return {
         action: 'search',
-        message: `Found ${searchRes.totalResults} flight options from ${origin} to ${destination} across 6 providers (Ixigo, MMT, Cleartrip, Skyscanner, Trip.com, Expedia).`,
-        flights: searchRes.results,
+        message: `Compare real fares for ${origin} to ${destination} using the provider links. TripPilot does not show live fares.`,
+        searchParams: searchRes.searchParams,
+        handoffLinks: searchRes.handoffLinks,
       };
     }
 
-    // 2. "Find the cheapest reasonable option"
+    // A cheapest-flight selection requires live provider results, which are not connected.
     else if (prompt.includes('cheapest') || prompt.includes('lowest fare')) {
-      const searchRes = await this.searchFlights({ originAirport: 'AMD', destinationAirport: 'DXB' }, userId);
-      const sortedByPrice = [...searchRes.results].sort((a, b) => (a.price.amount || a.price) - (b.price.amount || b.price));
-      const cheapest = sortedByPrice[0];
-
       return {
         action: 'cheapest',
-        message: `Cheapest option found: ${cheapest.airline} (${cheapest.flightNumber}) via ${cheapest.providerName} for ₹${cheapest.price.amount.toLocaleString()}.`,
-        cheapestFlight: cheapest,
+        message: 'TripPilot cannot rank live fares. Open a provider search link to compare current prices and availability.',
+        handoffLinks: [],
       };
     }
 
@@ -136,23 +145,17 @@ class FlightService {
         throw new Error('Trip ID is required to attach a flight.');
       }
 
-      const searchRes = await this.searchFlights({ originAirport: 'AMD', destinationAirport: 'DXB' }, userId);
-      const targetFlight = searchRes.results[0];
-
-      const attachRes = await this.attachFlightToTrip(tripId, targetFlight, userId);
       return {
         action: 'attach',
-        message: attachRes.message,
-        trip: attachRes.trip,
+        message: 'No flight has been selected or verified. Use a provider link to book directly. TripPilot can only attach a verified live flight result.',
       };
     }
 
     // Fallback
-    const searchRes = await this.searchFlights({ originAirport: 'AMD', destinationAirport: 'DXB' }, userId);
     return {
       action: 'search',
-      message: `Searched flight matrix for your journey.`,
-      flights: searchRes.results,
+      message: 'Tell me your origin, destination, and dates, or open Flight Search to compare current provider results.',
+      handoffLinks: [],
     };
   }
 }

@@ -592,6 +592,7 @@ const BudgetView = ({ trip, itinerary }) => {
                             return <CatIcon className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />;
                           })()}
                           <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{cat}</span>
+                          {cat === 'Flights' && <span className="text-[10px] text-slate-500 dark:text-slate-400">Estimated flight allowance for budgeting, not a fare</span>}
                         </div>
                         <div className="flex items-center gap-3 text-[10px]">
                           {est > 0 && <span className="text-amber-500 font-semibold">Est: {formatCurrency(est, currency)}</span>}

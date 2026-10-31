@@ -510,29 +510,38 @@ class TravelOrchestratorService {
     // 10. FLIGHT SEARCH DISPATCH ("Find flights")
     // ─────────────────────────────────────────────────────────────────
     if (lowerCmd.includes('find flight') || lowerCmd.includes('search flight') || lowerCmd.includes('flights')) {
-      const origin = activeTrip?.origin?.city || sessionParams.origin || 'Ahmedabad';
+      const origin = activeTrip?.origin?.city || sessionParams.origin;
       const destination = activeTrip?.destinations?.[0]?.name || sessionParams.destination;
 
-      if (!destination) {
+      if (!origin || !destination) {
         return {
           status: 'need_clarification',
           isComplete: false,
-          missingFields: ['destination'],
-          copilotMessage: 'Which destination would you like to search flights for?',
+          missingFields: [!origin ? 'origin' : null, !destination ? 'destination' : null].filter(Boolean),
+          copilotMessage: !origin && !destination
+            ? 'What are your origin and destination?'
+            : !origin ? 'Which city or airport are you flying from?' : 'Which destination would you like to search flights for?',
         };
       }
 
-      const flightToolRes = await aiTools.searchFlights({ originAirport: origin, destinationAirport: destination }, userId);
-      const flights = flightToolRes.data.results;
+      const flightToolRes = await aiTools.searchFlights({
+        originAirport: origin,
+        destinationAirport: destination,
+        departureDate: activeTrip?.dates?.startDate,
+        returnDate: activeTrip?.dates?.endDate,
+        travelersCount: activeTrip?.travelers?.count || 1,
+        cabinClass: activeTrip?.preferences?.cabinClass || 'economy',
+      }, userId);
+      const { searchParams, handoffLinks } = flightToolRes.data;
 
       return {
         status: 'completed',
         isComplete: true,
         action: 'SEARCH_FLIGHTS',
-        source: 'PROVIDER',
-        copilotMessage: `✈️ Found ${flights.length} flight options from ${origin} to ${destination} across Ixigo, MMT, Skyscanner, and Expedia.`,
-        dataSources: { flights: 'PROVIDER' },
-        structuredData: { flights, totalResults: flights.length },
+        source: 'PARTNER_HANDOFF',
+        copilotMessage: `Compare real fares for ${origin} to ${destination} through the provider links. TripPilot does not show live fares.`,
+        dataSources: { flights: 'PARTNER_HANDOFF' },
+        structuredData: { searchParams, handoffLinks },
         trip: activeTrip,
         itinerary: activeItinerary,
       };
@@ -807,10 +816,17 @@ class TravelOrchestratorService {
     const itinerary = itineraryRes.data;
 
     // Search Flights & Hotels in background
-    let flightOptions = [];
+    let flightSearch = null;
     try {
-      const flightRes = await aiTools.searchFlights({ originAirport: params.origin, destinationAirport: destinationContext.name }, userId);
-      flightOptions = flightRes.data?.results || [];
+      const flightRes = await aiTools.searchFlights({
+        originAirport: params.origin,
+        destinationAirport: destinationContext.name,
+        departureDate: params.startDate,
+        returnDate: params.endDate,
+        travelersCount: params.travelersCount || 2,
+        cabinClass: params.cabinClass || 'economy',
+      }, userId);
+      flightSearch = flightRes.data || null;
     } catch (e) {
       console.warn('[TravelOrchestrator] Flights search non-fatal error:', e.message);
     }
@@ -836,21 +852,22 @@ class TravelOrchestratorService {
       isComplete: true,
       action: 'CREATE_TRIP',
       source: 'INTERNAL',
-      copilotMessage: `🎉 Synthesized a complete ${params.durationDays}-day trip blueprint to ${destinationContext.name} from ${params.origin}! Integrated flight options, hotel fit scoring, weather forecast, route telemetry, and daily budget breakdown.`,
+      copilotMessage: `Created a ${params.durationDays}-day trip itinerary for ${destinationContext.name} from ${params.origin}. Use the flight search links to check real fares and availability. TripPilot does not show live fares.`,
       extractedParams: params,
       destinationContext,
       dataSources: {
         destination: destinationContext.source || 'LIVE_GEOCODING',
         origin: 'USER_INPUT',
         budget: 'AI_ESTIMATE',
-        flights: 'PROVIDER',
+        flights: 'PARTNER_HANDOFF',
         hotels: 'PROVIDER',
         weather: 'PROVIDER',
         maps: 'API',
         itinerary: 'AI_ESTIMATE',
       },
       structuredData: {
-        flightsCount: flightOptions.length,
+        searchParams: flightSearch?.searchParams,
+        handoffLinks: flightSearch?.handoffLinks || [],
         hotelsCount: hotelOptions.length,
         weatherForecastDays: weatherData?.length || params.durationDays,
       },

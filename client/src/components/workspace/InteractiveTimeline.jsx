@@ -250,7 +250,7 @@ const InteractiveTimeline = ({
                       <div className="flex items-center gap-4 text-slate-600 dark:text-slate-400">
                         <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                           <DollarSign className="w-3.5 h-3.5" />
-                          ₹{(item.estimatedCost || 0).toLocaleString()}
+                          ₹{(item.estimatedCost || 0).toLocaleString()}{item.notes?.includes('Estimated flight allowance for budgeting, not a fare') ? ' estimated allowance' : ''}
                         </span>
                         <span className="flex items-center gap-1 text-[11px]">
                           <Navigation className="w-3 h-3 text-sky-500" />

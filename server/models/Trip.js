@@ -95,6 +95,7 @@ const TripSchema = new mongoose.Schema(
         price: { type: Number, default: 0 },
         cabinClass: { type: String, default: 'Economy' },
         bookingReference: { type: String, default: '' },
+        isLive: { type: Boolean, default: false },
         status: { type: String, enum: ['searched', 'shortlisted', 'booked'], default: 'searched' },
       },
     ],

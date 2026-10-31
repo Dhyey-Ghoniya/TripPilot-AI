@@ -60,7 +60,7 @@ async function runModule16Tests() {
     console.assert(result.trip && result.trip._id, 'Trip document created');
     console.assert(result.destinationContext && result.destinationContext.name === 'Dubai', 'Destination resolved to Dubai');
     console.assert(result.itinerary && result.itinerary.days.length === 5, '5-day itinerary created');
-    console.assert(result.structuredData && result.structuredData.flightsCount >= 0, 'Flight matrix search performed');
+    console.assert(result.structuredData && result.structuredData.handoffLinks.length === 6, 'Flight provider handoff links created');
     console.assert(result.structuredData && result.structuredData.hotelsCount >= 0, 'Hotel matrix search performed');
 
     const tripId = result.trip._id;
@@ -68,7 +68,7 @@ async function runModule16Tests() {
 
     console.log(`✅ Complete User Journey Succeeded! Trip ID: ${tripId}`);
     console.log(`   - Resolved Destination: ${result.destinationContext.name}`);
-    console.log(`   - Flight Options: ${result.structuredData.flightsCount} matrix results`);
+    console.log(`   - Flight providers: ${result.structuredData.handoffLinks.length} search links`);
     console.log(`   - Hotel Options: ${result.structuredData.hotelsCount} matrix results`);
     console.log(`   - Itinerary Days: ${result.itinerary.days.length} days\n`);
 
@@ -158,4 +158,4 @@ async function runModule16Tests() {
   }
 }
 
-runModule16Tests();
+if (require.main === module) runModule16Tests();

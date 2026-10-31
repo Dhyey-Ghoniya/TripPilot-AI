@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import Button from '../ui/Button';
+import FlightHandoffCard from '../common/FlightHandoffCard';
 import aiService from '../../services/aiService';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -34,7 +35,7 @@ const LANDING_PROMPTS = [
 
 const STARTER_ACTIONS = [
   { label: 'Plan a trip', prompt: 'Help me plan a complete trip. Ask for the destination, dates, travelers, origin, and budget.' },
-  { label: 'Flights', prompt: 'Find flight options for my trip and compare available providers, times, and prices.' },
+  { label: 'Flights', prompt: 'Open flight search links for my trip so I can compare current prices with providers.' },
   { label: 'Hotels', prompt: 'Find hotel options for my trip with neighborhood fit, availability, and prices.' },
   { label: 'Getting in', prompt: 'Find the best transport options for getting into my destination from the airport or station.' },
   { label: 'Local SIM', prompt: 'Recommend local SIM and eSIM options for my destination, including practical setup details.' },
@@ -362,49 +363,8 @@ const TripPilotChat = ({
                   </div>
                 )}
 
-                {/* INLINE FLIGHT CARDS */}
-                {sData?.flights?.length > 0 && (
-                  <div className="mt-3 space-y-2 w-full">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      Illustrative flight examples, not live inventory
-                    </p>
-                    {sData.flights.slice(0, 2).map((fl, fIdx) => (
-                      <div
-                        key={fIdx}
-                        className="bg-slate-50 dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center text-[11px]"
-                      >
-                        <div>
-                          <span className="font-bold text-slate-900 dark:text-white">{fl.airline}</span>
-                          <span className="text-[9px] text-slate-400 block">
-                            {fl.departureAirport} → {fl.arrivalAirport} ({fl.cabinClass || 'Economy'})
-                          </span>
-                          <span className="text-[9px] text-amber-700 dark:text-amber-300 block">
-                            Indicative estimate, not a live fare
-                          </span>
-                        </div>
-                        <div className="text-right">
-                          <span className="font-bold text-emerald-600 dark:text-emerald-400 block">
-                            {fl.price?.amount || fl.price ? `₹${(fl.price?.amount || fl.price).toLocaleString()}` : 'Price unavailable'}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setHandoffModalItem({
-                                type: 'Flight',
-                                title: `${fl.airline} Flight`,
-                                provider: fl.providerName || 'Skyscanner / Cleartrip',
-                                price: fl.price?.amount || fl.price ? `₹${(fl.price?.amount || fl.price).toLocaleString()}` : 'Price unavailable',
-                                bookingUrl: fl.bookingUrl || '',
-                              })
-                            }
-                            className="text-[9px] text-secondary-600 dark:text-secondary-400 font-bold hover:underline"
-                          >
-                            Book Option
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                {sData?.handoffLinks?.length > 0 && (
+                  <div className="mt-3 w-full"><FlightHandoffCard searchParams={sData.searchParams} handoffLinks={sData.handoffLinks} /></div>
                 )}
 
                 {/* INLINE HOTEL CARDS */}

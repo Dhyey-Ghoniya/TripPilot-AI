@@ -29,6 +29,7 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import Card from '../../components/common/Card';
+import FlightHandoffCard from '../../components/common/FlightHandoffCard';
 import Tabs from '../../components/common/Tabs';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
@@ -67,7 +68,7 @@ const TripWorkspace = () => {
   const [quickAiCommand, setQuickAiCommand] = useState('');
   const [isAiExecuting, setIsAiExecuting] = useState(false);
   const [aiFeedback, setAiFeedback] = useState(null);
-  const [flightResults, setFlightResults] = useState([]);
+  const [flightSearch, setFlightSearch] = useState(null);
   const [hotelResults, setHotelResults] = useState([]);
   const [offerLoading, setOfferLoading] = useState(false);
   const [offerError, setOfferError] = useState('');
@@ -117,13 +118,14 @@ const TripWorkspace = () => {
       try {
         if (activeTab === 'flights') {
           const response = await flightService.searchFlights({
-            originAirport: trip.origin?.code || trip.origin?.name || 'AMD',
+            originAirport: trip.origin?.code || trip.origin?.city || trip.origin?.name || '',
             destinationAirport: trip.destinations?.[0]?.code || destName,
             departureDate: trip.dates?.startDate,
             returnDate: trip.dates?.endDate,
-            passengers: { adults: trip.travelers?.count || 1 },
+            travelersCount: trip.travelers?.count || 1,
+            cabinClass: trip.preferences?.cabinClass || 'economy',
           });
-          if (!cancelled) setFlightResults(response?.data?.results || []);
+          if (!cancelled) setFlightSearch(response?.data?.data || response?.data || null);
         } else {
           const response = await hotelService.searchHotels({
             destination: destName,
@@ -135,7 +137,7 @@ const TripWorkspace = () => {
           if (!cancelled) setHotelResults(response?.data?.results || []);
         }
       } catch (error) {
-        if (!cancelled) setOfferError('Live offers are unavailable right now. Review the trip data and try again.');
+        if (!cancelled) setOfferError(activeTab === 'flights' ? 'Flight search links are unavailable right now. Check the route and try again.' : 'Hotel offers are unavailable right now. Review the trip data and try again.');
       } finally {
         if (!cancelled) setOfferLoading(false);
       }
@@ -607,15 +609,7 @@ const TripWorkspace = () => {
           </p>
           {offerLoading && <Spinner size="md" />}
           {offerError && <div className="rounded-lg bg-amber-50 p-4 text-sm text-amber-900">{offerError}</div>}
-          {!offerLoading && !offerError && flightResults.length === 0 && <p className="text-sm text-slate-500">No flight offers were returned for this trip. No booking state was invented.</p>}
-          <div className="grid gap-3">
-            {flightResults.slice(0, 6).map((flight, index) => (
-              <div key={flight.id || flight.flightNumber || index} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
-                <div><p className="font-bold text-slate-900 dark:text-white">{flight.airline || flight.provider || 'Flight option'}</p><p className="text-xs text-slate-500">{flight.departureTime || 'Schedule unavailable'} to {flight.arrivalTime || 'Schedule unavailable'} · {flight.stops ?? 'Unknown'} stops</p><p className="text-xs text-slate-500">{flight.isIndicativeSuggestion || flight.isIndicativeEstimate || flight.dataQuality === 'sample_estimate' ? 'Indicative estimate, not a live fare' : 'Provider result'}</p></div>
-                <div className="flex items-center gap-3"><span className="font-bold text-slate-900 dark:text-white">{flight.price?.amount ? `${flight.price.currency || 'INR'} ${flight.price.amount.toLocaleString()}` : 'Price unavailable'}</span><Button size="sm" variant="outline" onClick={async () => { try { await flightService.attachFlightToTrip(trip._id, flight); await loadTripData(); addToast('Flight option attached to this trip.', 'success'); } catch (error) { addToast('Flight could not be attached.', 'error'); } }}>Attach</Button></div>
-              </div>
-            ))}
-          </div>
+          {!offerLoading && !offerError && flightSearch && <FlightHandoffCard searchParams={flightSearch.searchParams} handoffLinks={flightSearch.handoffLinks} />}
         </Card>
       )}
 

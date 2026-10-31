@@ -6,7 +6,7 @@ class FlightController {
     try {
       const userId = req.user ? req.user._id : null;
       const data = await flightService.searchFlights(req.body, userId);
-      return ApiResponse.success(res, data, 'Flights searched across provider adapters');
+      return ApiResponse.success(res, data, 'Flight provider search links are ready');
     } catch (error) {
       next(error);
     }

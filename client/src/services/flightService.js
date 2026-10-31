@@ -2,7 +2,7 @@ import api from './api';
 
 export const flightService = {
   /**
-   * Search flights across provider matrix
+   * Get outbound provider search links for a route
    */
   searchFlights: async (searchParams) => {
     return await api.post('/flights/search', searchParams);

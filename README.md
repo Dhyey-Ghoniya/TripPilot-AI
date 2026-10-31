@@ -3,7 +3,7 @@
 > **Full Implementation Status**: Modules 1 through 16 Complete  
 > **Architecture Level**: Production-Grade Multi-Domain Travel Copilot System
 
-TripPilot AI is an original, intelligent travel planning and journey engineering platform. Built around a central **Trip** object, it unifies multi-domain AI orchestration, flight and stay search matrixes, interactive routing, live weather intelligence, multi-currency budget optimization, social sharing, and administrative control into a single seamless product.
+TripPilot AI is an original travel planning platform. Built around a central **Trip** object, it unifies trip planning, provider search handoffs for flights, stay search, interactive routing, weather information, budget estimates, social sharing, and administrative controls.
 
 ---
 
@@ -14,7 +14,7 @@ TripPilot AI treats **TRIP** as the central product entity. Destinations and pro
 ```text
 TripPilot AI Core Platform
 ├── 1. AI Travel Agent (Natural language prompts, session memory, multi-domain orchestrator)
-├── 2. Flights (6-provider fare matrix, AI match scores, official booking deep links)
+├── 2. Flights (route details and outbound provider search links)
 ├── 3. Hotels (6-provider stay matrix, Hotel Fit Intelligence, distance & transit scoring)
 ├── 4. Activities (Curated experiences, time slot assignments, category filters)
 ├── 5. Itinerary (Day-by-day spatial sequencing, interactive editing, drag & reorder)
@@ -37,7 +37,7 @@ Per system architecture rules, features and external provider integrations are t
 | **AI Command Execution** | `Implemented` | `aiTools.service` + `travelOrchestrator` | Real-time execution of natural language updates ("Make Day 3 cheaper", "Add a beach", "Optimize route"). |
 | **Map & Route Engine** | `Implemented` | OpenStreetMap + OSRM Engine | Live routing & Haversine distance calculation across 7 transit modes (Walking, Taxi, Car, Metro, etc.). |
 | **Weather API** | `Implemented` | Open-Meteo REST API | Live current weather and 7-day weather forecasts with outdoor activity advisories. |
-| **Flight search** | `Sample data` | Illustrative schedules and partner search handoffs | No live flight inventory provider is connected. Current entries are examples, not available flights or fares. A provider integration must be implemented before a key can enable live results. |
+| **Flight search** | `Provider handoff` | Official provider flight-search pages | TripPilot passes the route details to its own screen, then opens provider sites. It does not list schedules, airlines, or fares. |
 | **Hotel search** | `Sample data` | Example properties and provider search handoffs | No live room inventory provider is connected. Current entries, ratings, and prices must not be treated as live property data. |
 | **Activities** | `Curated suggestions` | Local catalog plus ticket search links | Suggestions are not verified listings or availability. Ticket searches open Klook or GetYourGuide; booking is completed and confirmed with them. |
 | **Group trip planning** | `Implemented` | Trip collaborators and shared discussion | Trip owners can add existing TripPilot accounts as editors or viewers. Members can discuss plans; mention `@vani` to ask the assistant to work on the itinerary. |
@@ -46,7 +46,7 @@ Per system architecture rules, features and external provider integrations are t
 | **Social Sharing & Journals** | `Implemented` | MongoDB + JWT Auth | Unique 8-character share codes, public blueprint view, travel journal entries, and photo logs. |
 | **Administrative Control Center** | `Implemented` | `/api/admin/*` + React Admin Portal | Full user control, provider health checks, travel collections curation, content moderation, system configs. |
 
-*Provider keys do not automatically enable live inventory. The current flight and hotel adapters return sample data, regardless of credentials. Implement a provider's API client and verify it before describing its results as live.*
+*Flight sample adapters remain in the repository for development reference, but the user-facing flight flow does not call them. Hotel provider availability is separate and may remain sample data.*
 
 ---
 
@@ -69,7 +69,7 @@ TripPilot AI features an original, dark-mode-first aesthetic crafted specificall
    - Day-by-Day Itinerary Editor
    - Live Interactive Map with Polyline Telemetry
    - Weather Forecast Advisory Widget
-   - Flight & Hotel Comparison Matrixes
+   - Flight provider links and hotel search
    - Budget & Expense Split Tracker
    - Trip Intelligence & AI Copilot Command Panel
 4. **My Trips (`/my-trips`)**: Personal trip command hub to view, filter, delete, and share AI trip blueprints.
@@ -122,9 +122,13 @@ Without an LLM key, the deterministic planner still works. With one, the model c
 
 OpenAI API billing is separate from a ChatGPT subscription. See [OpenAI's billing explanation](https://help.openai.com/en/articles/9039756-managing-billing-for-chatgpt-and-the-api-platform). For Gemini, see Google's [API key safety guide](https://ai.google.dev/gemini-api/docs/api-key) and [model list](https://ai.google.dev/gemini-api/docs/models).
 
-### Live flight and hotel inventory
+### Flight price handoff
 
-There is no provider key to paste in today: setting `SKYSCANNER_API_KEY`, `EXPEDIA_API_KEY`, or `RAPIDAPI_KEY` alone will not change the sample adapters. To add live results, choose a supplier that accepts your application, obtain its API credentials and commercial/affiliate approval, then implement its search API in `server/services/flightProviders/` or `server/services/hotelProviders/`. Keep credentials in `server/.env`, normalize results into the existing provider schema, and return `inventoryVerified: true` only for API responses. Provider access is subject to each supplier's eligibility and terms.
+Live flight prices are not connected. Flight search returns outbound links to Google Flights, Skyscanner, MakeMyTrip, Cleartrip, ixigo, and Trip.com; provider search details must be entered on those sites. To add live prices later, a developer needs an approved provider account and API key, a server-side adapter, and verified results marked `isLive = true`. A key alone does not provide inventory access.
+
+### Live hotel inventory
+
+There is no provider key to paste in today: setting an API key alone does not change sample hotel data. To add live hotel results, choose a supplier that accepts your application, obtain its API credentials and commercial/affiliate approval, then implement its search API in `server/services/hotelProviders/`. Keep credentials in `server/.env`, normalize results into the provider schema, and return `inventoryVerified: true` only for API responses. Provider access is subject to each supplier's eligibility and terms.
 
 ### 2. Start Backend API Server
 ```bash

@@ -144,7 +144,7 @@ const AdminSettings = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
               { key: 'enableAiPlanner', label: 'AI Itinerary Generator', desc: 'Enable AI trip generator & prompt processing' },
-              { key: 'enableFlightSearch', label: 'Flight Search Engine', desc: 'Enable 6-provider flight fare matrix' },
+              { key: 'enableFlightSearch', label: 'Flight Search', desc: 'Enable outbound flight search links' },
               { key: 'enableHotelSearch', label: 'Hotel Search Engine', desc: 'Enable 6-provider stay search matrix' },
               { key: 'enableRealTimeWeather', label: 'Real-Time Weather API', desc: 'Enable live Open-Meteo weather integration' },
               { key: 'enableMapNavigation', label: 'OpenStreetMap Routing', desc: 'Enable Haversine & OSRM distance engine' },

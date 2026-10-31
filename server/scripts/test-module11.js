@@ -104,7 +104,7 @@ async function runModule11Tests() {
       forceSynthesis: true,
     });
     assert(orch1.status === 'completed' && orch1.action === 'CREATE_TRIP', 'Command 1: "Plan a 5-day Dubai trip from Ahmedabad." executed');
-    assert(orch1.dataSources.flights === 'PROVIDER' && orch1.dataSources.maps === 'API', 'Data sources properly attributed in multi-domain response');
+    assert(orch1.dataSources.flights === 'PARTNER_HANDOFF' && orch1.dataSources.maps === 'API', 'Data sources properly attributed in multi-domain response');
 
     const testTripId = orch1.trip._id;
 
@@ -114,7 +114,7 @@ async function runModule11Tests() {
       userId: dummyUserId,
       tripId: testTripId,
     });
-    assert(orch2.action === 'SEARCH_FLIGHTS' && orch2.source === 'PROVIDER', 'Command 2: "Find flights." returned SEARCH_FLIGHTS action');
+    assert(orch2.action === 'SEARCH_FLIGHTS' && orch2.source === 'PARTNER_HANDOFF' && orch2.structuredData.handoffLinks.length === 6, 'Command 2: "Find flights." returned provider handoff links');
 
     // Command 3: "Find a hotel near my activities."
     const orch3 = await travelOrchestrator.orchestrateTripPlanning({
@@ -222,4 +222,4 @@ async function runModule11Tests() {
   }
 }
 
-runModule11Tests();
+if (require.main === module) runModule11Tests();

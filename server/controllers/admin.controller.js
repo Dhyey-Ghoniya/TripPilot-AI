@@ -14,7 +14,6 @@ const ApiResponse = require('../utils/apiResponse');
 // Services for provider checks
 const weatherProvider = require('../services/weatherProviders/WeatherProvider');
 const mapProvider = require('../services/mapProviders/MapProvider');
-const flightProviderManager = require('../services/flightProviders/FlightProviderManager');
 const hotelProviderManager = require('../services/hotelProviders/HotelProviderManager');
 
 /**
@@ -94,17 +93,17 @@ const getProviderStatus = async (req, res) => {
       mapDetails = `Map provider route error: ${err.message}`;
     }
 
-    // 3. Flight Provider Check
+    // Flight links are handoffs only. The sample adapters remain unused by flight search.
     const flightProvidersList = [
-      { name: 'Ixigo Adapter', code: 'IXIGO', status: 'Mock/Development', note: 'Standardized flight aggregator matrix adapter.' },
-      { name: 'MakeMyTrip Adapter', code: 'MMT', status: 'Mock/Development', note: 'Deep booking link generator and fare engine.' },
-      { name: 'Cleartrip Adapter', code: 'CLEARTRIP', status: 'Mock/Development', note: 'Multi-carrier fare comparison adapter.' },
-      { name: 'Skyscanner Search Handoff', code: 'SKYSCANNER', status: 'Sample Data', note: 'No live flight search connector is implemented. Results are illustrative and links open provider search.' },
-      { name: 'Trip.com Adapter', code: 'TRIP_COM', status: 'Mock/Development', note: 'Global flight deal aggregator matrix adapter.' },
-      { name: 'Expedia Search Handoff', code: 'EXPEDIA', status: 'Sample Data', note: 'No live flight search connector is implemented. Results are illustrative and links open provider search.' },
+      { name: 'Google Flights', code: 'GOOGLE_FLIGHTS', status: 'Outbound Handoff', note: 'Opens the official flight search page. Enter search details there.' },
+      { name: 'Skyscanner', code: 'SKYSCANNER', status: 'Outbound Handoff', note: 'Opens the official flight search page. Enter search details there.' },
+      { name: 'MakeMyTrip', code: 'MMT', status: 'Outbound Handoff', note: 'Opens the official flight search page. Enter search details there.' },
+      { name: 'Cleartrip', code: 'CLEARTRIP', status: 'Outbound Handoff', note: 'Opens the official flight search page. Enter search details there.' },
+      { name: 'ixigo', code: 'IXIGO', status: 'Outbound Handoff', note: 'Opens the official flight search page. Enter search details there.' },
+      { name: 'Trip.com', code: 'TRIP_COM', status: 'Outbound Handoff', note: 'Opens the official flight search page. Enter search details there.' },
     ];
 
-    const overallFlightStatus = 'Sample Data';
+    const overallFlightStatus = 'Outbound Handoff';
 
     // 4. Hotel Provider Check
     const hotelProvidersList = [
@@ -122,7 +121,7 @@ const getProviderStatus = async (req, res) => {
       summary: [
         {
           name: 'Flight Provider',
-          category: 'Flight Matrix Engine',
+          category: 'Flight Search Links',
           status: overallFlightStatus,
           activeAdaptersCount: flightProvidersList.length,
           description: 'Sample flight schedules and search links. No live fare inventory is connected.',

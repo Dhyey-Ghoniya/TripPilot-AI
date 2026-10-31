@@ -1,3 +1,5 @@
+// Legacy sample-only adapters. They synthesize flight details and are intentionally
+// excluded from user-facing flight search until a verified live data provider exists.
 const ixigoProvider = require('./IxigoProvider');
 const makeMyTripProvider = require('./MakeMyTripProvider');
 const cleartripProvider = require('./CleartripProvider');

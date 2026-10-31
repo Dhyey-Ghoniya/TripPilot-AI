@@ -20,6 +20,7 @@ import {
   Building2,
 } from 'lucide-react';
 import Card from '../common/Card';
+import FlightHandoffCard from '../common/FlightHandoffCard';
 import Button from '../ui/Button';
 
 const COMMAND_PRESETS = [
@@ -147,32 +148,8 @@ const AiTripAssistant = ({ tripId, onExecuteCommand }) => {
               >
                 <div className="whitespace-pre-wrap">{msg.text}</div>
 
-                {/* 1. FLIGHT CARDS */}
-                {sData?.flights?.length > 0 && (
-                  <div className="mt-3 space-y-2 w-full">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Live Flight Options Matrix</p>
-                    {sData.flights.slice(0, 3).map((flight, idx) => (
-                      <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-xl flex flex-col gap-2 shadow-sm">
-                        <div className="flex justify-between items-center">
-                          <span className="font-bold text-[12px] text-slate-900 dark:text-white flex items-center gap-1.5">
-                            <Plane className="w-3.5 h-3.5 text-secondary-500" />
-                            {flight.airline} <span className="opacity-50 text-[10px]">via {flight.providerName || 'Skyscanner'}</span>
-                          </span>
-                          <span className="font-black text-emerald-600 dark:text-emerald-400 text-xs">₹{(flight.price?.amount || flight.price || 14500).toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-[10px] text-slate-500">
-                          <span>{flight.departureAirport || 'AMD'} → {flight.arrivalAirport || 'DEST'} ({flight.cabinClass || 'Economy'})</span>
-                          <button
-                            type="button"
-                            onClick={() => setHandoffModalItem({ type: 'Flight', title: `${flight.airline} Flight`, provider: flight.providerName || 'Cleartrip / Skyscanner', price: `₹${(flight.price?.amount || flight.price || 14500).toLocaleString()}` })}
-                            className="text-secondary-600 dark:text-secondary-400 font-bold hover:underline flex items-center gap-1"
-                          >
-                            <span>Book / Provider Handoff</span> <ExternalLink className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                {sData?.handoffLinks?.length > 0 && (
+                  <div className="mt-3 w-full"><FlightHandoffCard searchParams={sData.searchParams} handoffLinks={sData.handoffLinks} /></div>
                 )}
 
                 {/* 2. HOTEL CARDS */}

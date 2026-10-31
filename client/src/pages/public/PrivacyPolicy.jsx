@@ -52,7 +52,7 @@ const PrivacyPolicy = () => {
           <p>Your data is processed strictly for functional travel logistics, including:</p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs sm:text-sm">
             <li>Synthesizing personalized travel schedules and route sequences.</li>
-            <li>Showing illustrative flight and stay estimates and linking to provider searches. TripPilot does not currently receive live flight or hotel inventory.</li>
+            <li>Showing trip budget estimates and linking to external flight and hotel provider searches. TripPilot does not currently receive live flight inventory.</li>
             <li>When an administrator configures an LLM provider, sending the user's current prompt and relevant trip or itinerary context to that provider to interpret requests and draft chat responses.</li>
             <li>Maintaining account security, authentication sessions, and password recovery.</li>
             <li>Preventing automated abuse and securing application endpoints.</li>

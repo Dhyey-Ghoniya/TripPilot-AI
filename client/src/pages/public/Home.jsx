@@ -53,7 +53,7 @@ const DESTINATIONS = [
 ];
 
 const START_LINKS = [
-  { label: 'Search flights', detail: 'Compare routes and dates', icon: Plane, to: '/flights' },
+  { label: 'Search flights', detail: 'Open provider searches for your route', icon: Plane, to: '/flights' },
   { label: 'Find a stay', detail: 'Search by dates and guests', icon: Hotel, to: '/hotels' },
   { label: 'Explore places', detail: 'Browse destinations and ideas', icon: MapPin, to: '/explore' },
 ];
